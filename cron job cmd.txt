@@ -10,7 +10,7 @@
 
 
 New Cron Job:
--------------
+----------------
 
 #min hr date month dow cmd-insertion of voc
 55 19 31 1,3,5,7,8,10,12 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
