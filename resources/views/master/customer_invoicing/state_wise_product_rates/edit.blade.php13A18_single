@@ -1,0 +1,130 @@
+<div class="row" ng-hide="editStateWiseProductRateDiv">
+    <div class="panel panel-default">
+		<div class="panel-body">
+			<div class="row header-form">
+				<span class="pull-left headerText"><strong></strong>Edit State Wise Product</strong></span>
+				<span class="pull-right pull-custom"><button type="button" class="btn btn-primary" ng-click="navigateFormPage(cirStateID,'0','0','edit');">Back</button></span>
+			</div>
+			<form method="POST" role="form" id="erpEditStateWiseProductRateForm" name="erpEditStateWiseProductRateForm" novalidate>
+
+				<div class="row">
+					<!-- States-->
+                    <div class="col-xs-3 form-group"><label for="cir_state_id">Select State:<em class="asteriskRed">*</em></label></div>
+                    <div class="col-xs-6 form-group">
+						<select class="form-control"
+								name="cir_state_id"
+								ng-model="editStateWiseProductRate.cir_state_id.selectedOption"
+								id="cir_state_id"
+								ng-required='true'
+								ng-options="item.name for item in stateCodeList track by item.id" disabled >
+							<option value="">Select State</option>
+						</select>
+						<span ng-messages="erpEditStateWiseProductRateForm.cir_state_id.$error" ng-if='erpEditStateWiseProductRateForm.cir_state_id.$dirty  || erpEditStateWiseProductRateForm.$submitted' role="alert">
+							<span ng-message="required" class="error">State is required</span>
+						</span>
+					</div>
+                    <!-- /States--->
+				</div>
+        <div class="row">
+          <!-- Branch -->
+          <div class="col-xs-3 form-group"><label for="cir_state_id">Branch:<em class="asteriskRed">*</em></label></div>
+          <div class="col-xs-6 form-group">
+             <select class="form-control"
+                name="cir_division_id"
+                ng-model="editStateWiseProductRate.cir_division_id.selectedOption"
+                id="cir_division_id"
+                ng-required='true'
+                ng-options="item.name for item in divisionsCodeList track by item.id" disabled >
+                <option value="">Select Branch</option>
+             </select>
+             <span ng-messages="erpEditStateWiseProductRateForm.cir_division_id.$error" ng-if='erpEditStateWiseProductRateForm.cir_division_id.$dirty  || erpEditStateWiseProductRateForm.$submitted' role="alert">
+             <span ng-message="required" class="error">Branch is required</span>
+             </span>
+          </div>
+          <!-- /Branch--->
+        </div>
+        <div class="row">
+					<!-- Product department-->
+                    <div class="col-xs-3 form-group"><label for="cir_state_id">Select Department:<em class="asteriskRed">*</em></label></div>
+                    <div class="col-xs-6 form-group">
+						<select class="form-control"
+								name="cir_product_category_id"
+								ng-model="editStateWiseProductRate.cir_product_category_id.selectedOption"
+								id="cir_product_category_id"
+								ng-required='true'
+                ng-change = "getProductAliasRateList(editStateWiseProductRate.cir_product_category_id.selectedOption.id)"
+								ng-options="item.name for item in parentCategoryList track by item.id" disabled>
+							<option value="">Select Department</option>
+						</select>
+						<span ng-messages="editStateWiseProductRate.cir_product_category_id.$error" ng-if='editStateWiseProductRate.cir_product_category_id.$dirty  || editStateWiseProductRate.$submitted' role="alert">
+							<span ng-message="required" class="error">Department is required</span>
+						</span>
+					</div>
+                    <!-- /States--->
+                </div>
+                <div class="row">
+                    <!-- Product Name-->
+                    <div class="col-xs-3 form-group"><label for="invoicing_rate">Product Name:<em class="asteriskRed">*</em></label></div>
+                    <div class="col-xs-6 form-group">
+                        <input type="text" disabled
+                            id="invoicing_rate"
+                            ng-model="editStateWiseProductRate.product_name"
+                            ng-required="true"
+                            class="form-control"
+                            placeholder="Product Name">
+                    </div>
+                    <!-- /Product Name--->
+                </div>
+                <div class="row">
+                    <!-- Product Alias Name-->
+                    <div class="col-xs-3 form-group"><label for="cir_c_product_id">Product Alias Name:<em class="asteriskRed">*</em></label></div>
+                    <div class="col-xs-6 form-group">
+						<select class="form-control" disabled
+                name="cir_c_product_id"
+								ng-model="editStateWiseProductRate.cir_c_product_id.selectedOption"
+								id="cir_c_product_id"
+                ng-change="funSetProductName(editStateWiseProductRate.cir_c_product_id.selectedOption.product_name)"
+								ng-required='true'
+								ng-options="customerProducts.name for customerProducts in productAliasRateList track by customerProducts.id">
+							<option value="">Select Product</option>
+						</select>
+						<span ng-messages="erpEditStateWiseProductRateForm.cir_c_product_id.$error" ng-if='erpEditStateWiseProductRateForm.cir_c_product_id.$dirty || erpEditStateWiseProductRateForm.$submitted' role="alert">
+							<span ng-message="required" class="error">Product is required</span>
+						</span>
+					</div>
+                    <!-- /Products--->
+                </div>
+
+                <div class="row">
+                    <!-- Rates-->
+                    <div class="col-xs-3 form-group"><label for="invoicing_rate">Rate:<em class="asteriskRed">*</em></label></div>
+                    <div class="col-xs-6 form-group">
+                        <input type="text"
+                            id="invoicing_rate"
+                            ng-model="editStateWiseProductRate.invoicing_rate"
+                            ng-required="true"
+                            name="invoicing_rate"
+                            class="form-control"
+                            placeholder="Rate">
+						<span ng-messages="erpEditStateWiseProductRateForm.invoicing_rate.$error" ng-if="erpEditStateWiseProductRateForm.invoicing_rate.$dirty || erpEditStateWiseProductRateForm.$submitted" role="alert">
+							<span ng-message="required" class="error">Rate is required</span>
+						</span>
+                    </div>
+                    <!-- /Rates--->
+                </div>
+
+                <div class="row">
+                    <!--Save Button-->
+                    <div class="col-xs-12 form-group text-right mT10">
+                        <label for="submit">{{ csrf_field() }}</label>
+						<input type="hidden" ng-value="editStateWiseProductRate.cir_id" name="cir_id" ng-model="editStateWiseProductRate.cir_id">
+                        <button type="submit" ng-disabled="erpEditStateWiseProductRateForm.$invalid" class="btn btn-primary" ng-click="funUpdateStateWiseProductRate(editStateWiseProductRate.cir_id)">Update</button>
+                        <button type="button" class="btn btn-default" ng-click="backButton()">Cancel</button>
+                    </div>
+                    <!--Save Button-->
+				</div>
+
+		    </form>
+		</div>
+    </div>
+</div>

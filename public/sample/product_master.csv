@@ -1,0 +1,5 @@
+product_category_name*,product_barcode,product_name*,product_description
+Milk,barcode_1,test product 1,
+Milk,barcode_2,test product 2,
+Milk,,test product 3,
+Milk,,test product 4,

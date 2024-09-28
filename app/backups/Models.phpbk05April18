@@ -1,0 +1,2002 @@
+<?php
+
+//Model.php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+use DB;
+use PDF;
+use File;
+use Session;
+use ArrayObject;
+
+class Models extends Model
+{
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function formatTimeStampFromArray($data,$format='Y-m-d'){
+
+	global $models,$order,$report;
+
+	foreach($data as $item){
+	    if(!empty($item->created_at)){
+		$item->created_at = !empty($item->created_at) ? date($format,strtotime($item->created_at)) : '-';
+	    }
+	    if(!empty($item->updated_at)){
+		$item->updated_at = !empty($item->updated_at) ? date($format,strtotime($item->updated_at)) : '-';
+	    }
+	    if(!empty($item->order_date)){
+		$item->order_date = !empty($item->order_date) ? date(DATEFORMAT,strtotime($item->order_date)) : '-';
+	    }
+	    if(!empty($item->booking_date)){
+		$item->booking_date = !empty($item->booking_date) ? date(DATEFORMAT,strtotime($item->booking_date)) : '-';
+	    }
+	    if(!empty($item->report_date)){
+		$item->report_date = !empty($item->report_date) ? date(DATEFORMAT,strtotime($item->report_date)) : '-';
+	    }
+	    if(!empty($item->expected_due_date)){
+		$item->expected_due_date = !empty($item->expected_due_date) ? date(DATEFORMAT,strtotime($item->expected_due_date)) : '-';
+	    }
+	    if(!empty($item->dept_due_date)){
+		$item->dept_due_date = !empty($item->dept_due_date) ? date(DATEFORMAT,strtotime($item->dept_due_date)) : '-';
+	    }
+	    if(!empty($item->report_due_date)){
+		$item->report_due_date = !empty($item->report_due_date) ? date(DATEFORMAT,strtotime($item->report_due_date)) : '-';
+	    }
+	    if(!empty($item->tentative_date)){
+		$item->tentative_date = !empty($item->tentative_date) ? date('Y-m-d',strtotime($item->tentative_date)) : '-';
+	    }
+	    if(!empty($item->sample_date)){
+		$item->sample_date = !empty($item->sample_date) ? date(DATEFORMAT,strtotime($item->sample_date)) : '-';
+	    }
+	    if(!empty($item->opl_date)){
+		$item->opl_date = !empty($item->opl_date) ? date($format,strtotime($item->opl_date)) : '-';
+	    }
+	    if(!empty($item->invoice_date)){
+		$item->invoice_date = !empty($item->invoice_date) ? date(DATEFORMAT,strtotime($item->invoice_date)) : '-';
+	    }
+	    if(!empty($item->dispatch_date)){
+		$item->dispatch_date = !empty($item->dispatch_date) ? date($format,strtotime($item->dispatch_date)) : '-';
+	    }
+	    if(!empty($item->sample_name)){
+		$item->sample_name = trim(strip_tags($item->sample_name));
+	    }
+	    if(!empty($item->order_status_time)){
+		$item->order_status_time = !empty($item->order_status_time) ? date(DATETIMEFORMAT,strtotime($item->order_status_time)) : '-';
+	    }
+
+	    //Display Order Dispatch Status
+	    $item->canDispatchOrder = !empty($item->order_status) && $item->order_status > '7' ? $this->getOrderDispatchingStatus($item) : '0';
+	}
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function formatTimeStamp($item,$format='Y-m-d'){
+	if(!empty($item->created_at)){
+	    $item->created_at = !empty($item->created_at) ? date($format,strtotime($item->created_at)) : '-';
+	}
+	if(!empty($item->updated_at)){
+	    $item->updated_at = !empty($item->updated_at) ? date($format,strtotime($item->updated_at)) : '-';
+	}
+	if(!empty($item->order_date)){
+	    $item->order_date        = !empty($item->order_date) ? date('d-m-Y',strtotime($item->order_date)) : '-';
+	    $item->booking_date_time = !empty($item->order_date) ? date($format,strtotime($item->order_date)) : '-';
+	}
+	if(!empty($item->expected_due_date)){
+	    $item->expected_due_date = !empty($item->expected_due_date) ? date($format,strtotime($item->expected_due_date)) : '-';
+	}
+	if(!empty($item->sampling_date)){
+	    $item->sampling_date = !empty($item->sampling_date) ? date('d-m-Y H:i:s',strtotime($item->sampling_date)) : '-';
+	}
+	if(!empty($item->report_date)){
+	    $item->report_date = !empty($item->report_date) ? date(DATEFORMAT,strtotime($item->report_date)) : '-';
+	}
+	if(!empty($item->dept_due_date)){
+	    $item->dept_due_date = !empty($item->dept_due_date) ? date($format,strtotime($item->dept_due_date)) : '-';
+	}
+	if(!empty($item->report_due_date)){
+	    $item->report_due_date = !empty($item->report_due_date) ? date($format,strtotime($item->report_due_date)) : '-';
+	}
+	if(!empty($item->opl_date)){
+	    $item->opl_date = !empty($item->opl_date) ? date(DATEFORMAT,strtotime($item->opl_date)) : '-';
+	}
+	if(!empty($item->sample_date)){
+	    $item->sample_date_org = !empty($item->sample_date) ? date(MYSQLDATETIMEFORMAT,strtotime($item->sample_date)) : '-';
+	    $item->sample_date     = !empty($item->sample_date) ? date(MYSQLDATFORMAT,strtotime($item->sample_date)) : '-';
+	}
+	if(!empty($item->sample_current_date)){
+	    $item->sample_current_date = !empty($item->sample_current_date) ? date(MYSQLDATFORMAT,strtotime($item->sample_current_date)) : '-';
+	}
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function formatCustomTimeStampFromArray($data,$format='Y-m-d',$coloumNameArray=array()){
+        foreach($data as $item){
+	    foreach($coloumNameArray as $coloumName){
+		if(!empty($item->order_date) && $coloumName == 'order_date'){
+		    $item->order_date = !empty($item->order_date) ? date($format,strtotime($item->order_date)) : '-';
+		}
+		if(!empty($item->expected_due_date) && $coloumName == 'expected_due_date'){
+		    $item->expected_due_date = !empty($item->expected_due_date) ? date($format,strtotime($item->expected_due_date)) : '-';
+		}
+	    }
+	}
+    }
+
+    /**
+    * function to display order sample type
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getOrderDispatchingStatus($items){
+
+	global $models,$order;
+
+	if(!empty($items->dispatch_status)){
+	    return 1; //Dispatched Orders,Hide the Dispatch Button
+	}else{
+	    if(!empty($items->billing_type_id) && $items->billing_type_id == '4' && empty($items->dispatch_status)){
+		return 2; //Dispatching Orders,Show the Dispatched Button
+	    }else if(!empty($items->order_sample_type) && in_array($items->order_sample_type,array('1','2')) && empty($items->dispatch_status)){
+		return 2; //Dispatching Orders,Show the Dispatched Button
+	    }else if(!empty($items->order_id) && !empty($order->isBookingOrderAmendedOrNot($items->order_id)) && empty($items->dispatch_status)){
+		return 2; //Dispatching Orders,Show the Dispatched Button in case of Daily Order which get amended
+	    }else{
+		return 3; //Not Eligible for Dispatched means order has Daily Billing
+	    }
+	}
+    }
+
+    /**
+    * function to can Update Booking Order Status
+    *
+    *CASE 1:If order is Monthly and Status is greater than > 7
+    *CASE 2:If order is Lab/Inter Order and Status is greater than > 7
+    *CASE 2:If order is Daily Order and IS amended Order and Status is greater than > 7
+    *
+    */
+    function canUpdateBookingOrderStatus($items){
+
+	global $models,$order;
+
+	$status = '0';
+
+	if(!empty($items->status) && $items->status > '7'){
+	    if(!empty($items->dispatch_status)){
+		$status = '0'; 		//Dispatched Orders,Hide the Dispatch Button
+	    }else{
+		if(!empty($items->order_sample_type) && in_array($items->order_sample_type,array('1','2')) && empty($items->dispatch_status)){
+		    $status = '1'; 	//Dispatching Orders,Show the Dispatched Button
+		}else if(!empty($items->order_id) && !empty($order->isBookingOrderAmendedOrNot($items->order_id)) && empty($items->dispatch_status)){
+		    $status = '1'; 	//Dispatching Orders,Show the Dispatched Button in case of Daily Order which get amended
+		}else if(!empty($items->billing_type_id) && $items->billing_type_id == '4' && empty($items->dispatch_status)){
+			$status = '0'; 	//Dispatching Orders,Show the Dispatched Button
+		}else{
+		    $status = '0'; 	//Not Eligible for Dispatched means order has Daily Billing
+		}
+	    }
+	}
+	return $status;
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getAutoGenCode($sectionName){
+        return $sectionName.date('d').date('m').date('y').time();
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function unsetFormDataVariables($formData,$unsetKeyData){
+        foreach($unsetKeyData as $keyName){
+	    if(isset($formData[$keyName]))unset($formData[$keyName]);
+	}
+	return $formData;
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function unsetFormDataVariablesArray($formData,$unsetKeyData){
+	foreach($formData as $key => $keyData){
+	    foreach($unsetKeyData as $keyName){
+		unset($keyData[$keyName]);
+	    }
+	    $formData[$key] = $keyData;
+	}
+	return $formData;
+    }
+
+    /**
+    * read csv file data and convert to array
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function csvToArray($fileName){
+	$handle = fopen($fileName, "r");
+	$fields = fgetcsv($handle, 1000, ",");
+	$header['header']=$fields;
+	foreach($fields as $k=>$val){
+	    $header['newheader'][$k]=ucwords(str_replace('_',' ',$val));
+	}
+	while(($result = fgetcsv($handle, 1000, ",")) !== FALSE){
+	    $header['data'][]=$result;
+	}
+	fclose($handle);
+	return $header;
+    }
+
+    /**
+    * shift last column to first
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function shiftArray($arr){
+	$dataLast=array();
+	$arrLast[]  = array_pop($arr);
+	$arrayColumns = array_merge($arrLast,$arr);
+	return $arrayColumns;
+    }
+
+    /**
+    * convert date from 01/04/2017 to 2017-01-04 formate
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function dateConvert($date){
+	return date_format(date_create($date),"Y-m-d");
+    }
+
+    function convertDateFormat($date){
+	return date("Y-m-d", strtotime($date));
+    }
+
+    function convertObjectToArray($data){
+	return json_decode(json_encode($data),true);
+    }
+
+    /**
+    * Recursively filter an array
+    *
+    * @param array $array
+    * @param callable $callback
+    *
+    * @return array
+    */
+    function array_filter_recursive($array) {
+	foreach($array as &$value){
+	    if (is_array($value)){
+		//$value = array_filter($value);
+	    }
+	}
+	return $array;
+    }
+
+    function generateCode($prefix,$tableName,$fieldName,$uniqueId){
+
+	//getting Max Serial Number
+	$maxCode = DB::table($tableName)->select('*')->orderBy($uniqueId,'DESC')->limit(1)->first();
+	$maxSerialNo  = !empty($maxCode->$uniqueId) ? $maxCode->$uniqueId + 1: '1';
+
+	//Combing all to get unique order number
+	return str_replace(' ','',$prefix.$maxSerialNo);
+    }
+
+    function getParameterEquipmentTypeId($test_parameter_id){
+	$data=DB::table('test_parameter_equipment_types')->select('equipment_type_id')->where('test_parameter_id','=',$test_parameter_id)->get()->toArray();
+	if(!empty($data))
+	    return $data;
+	else
+	    return false;
+    }
+
+    function getExplodedData($data,$delimater,$part=NULL){
+	$dataArray = explode($delimater,$data);
+	return isset($part) ? trim($dataArray[$part]) : $dataArray;
+    }
+
+    function getParameterName($test_parameter_id){
+	$data=DB::table('test_parameter')->select('test_parameter_name')->where('test_parameter_id','=',$test_parameter_id)->first();
+	if(!empty($data))
+	    return $data->test_parameter_name;
+	else
+	    return false;
+    }
+
+    function getMainProductCatParentId($p_category_id) {
+	$data=DB::table('product_categories')->where('p_category_id','=',$p_category_id)->first();
+	if ($data->parent_id > 0) {
+	    return $this->getMainProductCatParentId($data->parent_id);
+	}
+	return $data->p_category_id;
+    }
+
+    //get product_category_name by product_category_id
+    function getMainProductCatParentName($p_category_id){
+	$data = DB::table('product_categories')->where('p_category_id','=',$p_category_id)->first();
+	if ($data->parent_id > 0) {
+	    return $this->getMainProductCatParentId($data->parent_id);
+	}
+	return $data->p_category_name;
+    }
+
+    //get product_category_name by product_category_id
+    function getAllChildrens($parent_id){
+	$tree = array();
+	if(!empty($parent_id)){
+	    $tree = DB::table('product_categories')->where('parent_id','=',$parent_id)->pluck('p_category_id')->toArray();
+	    foreach($tree as $key => $val){
+		$ids = $this->getAllChildrens($val);
+		$tree = array_merge($tree,$ids);
+	    }
+	}
+	return $tree;
+    }
+
+    //Date that needs to be tested goes here
+    function getFormatedDate($date,$format='Y-m-d'){
+        return date($format,strtotime($date));
+    }
+
+    //Date that needs to be tested goes here
+    function getFormatedDateTime($date,$format='Y-m-d'){
+        return date($format,strtotime($date)).' '.date("H:i:s");
+    }
+
+    //get method id using method name
+    public function getMethodId($method_name){
+	$methodId = DB::table('method_master')->select('method_id')->where('method_name',$method_name)->limit(1)->first();
+	return !empty($methodId)?$methodId->method_id:'0';
+    }
+    
+    /**
+    * Convert html to string formate
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function htmlToStringFormate($data){
+	foreach($data as $item){
+	    if(!empty($item->name)){
+		$item->name = strip_tags($item->name);
+	    }
+	}
+    }
+
+    /**
+     * function for Saving PDF in DB
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePDF($contentIds,$contentType='order'){
+
+        global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	$pdfData = $viewData = $response = array();
+
+	if(!empty($contentIds)){
+
+	    if($contentType == 'order'){
+
+		//directory Path
+		$dirName        = DOC_ROOT.ORDER_PATH;
+		$jobOrderPrefix = JOB_ORDER_PREFIX;
+		$viewFileName   = 'sales.order_master.generateJobOrder';
+
+		if(is_array($contentIds)){
+		    foreach($contentIds as $key => $contentId){
+			$pdfData[$contentId] = $order->viewOrderDetail($contentId);
+		    }
+		}else{
+		    $pdfData[$contentIds] = $order->viewOrderDetail($contentIds);
+		}
+
+		if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    foreach($pdfData as $key => $value){
+			$fileName    = $jobOrderPrefix.$value['order']['order_no'].'.pdf';
+			$fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+			view()->share('viewData',$value);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			if($pdf->save($fileNameDir)){
+			    $response[$value['order']['order_id']] = $fileName;
+			}
+		    }
+		}
+	    }else if($contentType == 'jobSheet'){
+
+		//directory Path
+		$dirName        = DOC_ROOT.ANALYTICAL_PATH;
+		$viewFileName   = 'schedulings.jobPrint.generateAnalyticalSheet';
+
+		$reportContentIds               = !empty($contentIds['order_id']) ? $contentIds['order_id'] : '0';
+		$containAnalyticalOrCalculation = !empty($contentIds['downloadType']) ? $contentIds['downloadType'] : '0';
+		$analyticalCalculationPrefix    = $containAnalyticalOrCalculation == '1' ? '-as' : '-cs';
+
+		if($reportContentIds){
+		    if(is_array($reportContentIds)){
+			foreach($reportContentIds as $key => $contentId){
+			    $pdfData[$contentId] = $order->viewOrderDetail($contentId);
+			}
+		    }else{
+			$pdfData[$reportContentIds] = $order->viewOrderDetail($reportContentIds);
+		    }
+
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+			    foreach($pdfData as $key => $value){
+				    $fileName    = $value['order']['order_no'].$analyticalCalculationPrefix.'.pdf';
+				    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+				    view()->share('containAnalyticalOrCalculation',$containAnalyticalOrCalculation);
+				    view()->share('viewData',$value);
+				    $pdf = PDF::loadView($viewFileName);
+				    $pdf->setPaper('a4','portrait')->setWarnings(false);
+				    if($pdf->save($fileNameDir)){
+					    $response[$value['order']['order_id']] = $fileName;
+				    }
+			    }
+		    }
+		}
+	    }else if($contentType == 'report'){
+
+		//directory Path
+		$dirName      = DOC_ROOT.REPORT_PATH;
+		$reportPrefix = REPORT_PREFIX;
+		$viewFileName = 'sales.reports.generateReport';
+
+		$reportContentIds       = !empty($contentIds['order_id']) ? $contentIds['order_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentIds['downloadType']) ? $contentIds['downloadType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($reportContentIds){
+		    if(is_array($reportContentIds)){
+			foreach($reportContentIds as $key => $contentId){
+			    $pdfData[$contentId] = $order->viewReportDetail($contentId);
+			}
+		    }else{
+			$pdfData[$reportContentIds] = $order->viewReportDetail($reportContentIds);
+		    }
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+		    if(!empty($pdfData) && is_dir($dirName)){
+			    foreach($pdfData as $key => $value){
+				    $fileName    = $value['order']['report_no'].$headerFooterFilePrefix.'.pdf';
+				    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+				    view()->share('viewData',$value);
+				    view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+				    $pdf = PDF::loadView($viewFileName);
+				    $pdf->setPaper('a4','portrait')->setWarnings(false);
+				    if($pdf->save($fileNameDir)){
+					    $response[$value['order']['order_report_id']] = $fileName;
+				    }
+			    }
+		    }
+		}
+	    }else if($contentType == 'invoice'){
+
+		//directory Path
+		$dirName      = DOC_ROOT.INVOICE_PATH;
+		$viewFileName = 'sales.invoices.generateInvoice';
+
+		if(is_array($contentIds)){
+		    foreach($contentIds as $key => $contentId){
+			$pdfData[$contentId] = $invoice->getInvoiceData($contentId);
+		    }
+		}else{
+		    $pdfData[$contentIds] = $invoice->getInvoiceData($contentIds);
+		}
+
+		if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    foreach($pdfData as $key => $value){
+			$fileName    = $value['invoiceHeader']['invoice_no'].'.pdf';
+			$fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+			view()->share('viewData',$value);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			if($pdf->save($fileNameDir)){
+			    $response[$value['invoiceHeader']['invoice_id']] = $fileName;
+			}
+		    }
+		}
+	    }else if($contentType == 'invoicewhf'){
+
+		//directory Path
+		$dirName                = DOC_ROOT.INVOICE_PATH;
+		$viewFileName 	        = 'sales.invoices.generateInvoice';
+		$invoiceContentIds      = !empty($contentIds['invoice_id']) ? $contentIds['invoice_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentIds['downloadType']) ? $contentIds['downloadType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($invoiceContentIds){
+		    if(is_array($invoiceContentIds)){
+			foreach($invoiceContentIds as $key => $contentId){
+			    $pdfData[$contentId] = $invoice->getInvoiceData($contentId);
+			}
+		    }else{
+			$pdfData[$invoiceContentIds] = $invoice->getInvoiceData($invoiceContentIds);
+		    }
+
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+			foreach($pdfData as $key => $value){
+			    $fileName    = $value['invoiceHeader']['invoice_no'].$headerFooterFilePrefix.'.pdf';
+			    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+			    view()->share('viewData',$value);
+			    view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			    $pdf = PDF::loadView($viewFileName);
+			    $pdf->setPaper('a4','portrait')->setWarnings(false);
+			    if($pdf->save($fileNameDir)){
+				$response[$value['invoiceHeader']['invoice_id']] = $fileName;
+			    }
+			}
+		    }
+		}
+	    }else if($contentType == 'analystSheet'){
+
+		//directory Path
+		$dirName      = DOC_ROOT.ANALYST_PATH;
+		$viewFileName = 'schedulings.jobPrint.generateAnalystJobSheetPrint';
+
+		if(!empty($contentIds)){
+
+		    $pdfData[] = $contentIds;
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+			foreach($pdfData as $key => $value){
+			    $fileName    = 'analyst-sheet-'.date('mY').'.pdf';
+			    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+			    view()->share('viewData',$value);
+			    $pdf = PDF::loadView($viewFileName);
+			    $pdf->setPaper('a4','landscape')->setWarnings(false);
+			    if($pdf->save($fileNameDir)){
+				$response[$key] = $fileName;
+			    }
+			}
+		    }
+		}
+	    }else if($contentType == 'product_test'){
+
+		$dirName        = DOC_ROOT.PRODUCT_TEST_PATH;
+		$productTestPrefix = PRODUCT_TEST_PREFIX;
+		$viewFileName   = 'master.standard_wise_product_test.product_tests.generateProductTestParameterList';
+		$pdfData[$contentIds] = $this->getProductTestParametersList($contentIds);
+
+		if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    $fileName    = $productTestPrefix.$pdfData[$contentIds]['testDetails']['test_code'].'.pdf';
+		    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+		    view()->share('viewData',$pdfData[$contentIds]);
+		    $pdf = PDF::loadView($viewFileName);
+		    $pdf->setPaper('a4','portrait')->setWarnings(false);
+		    if($pdf->save($fileNameDir)){
+			$response[$pdfData[$contentIds]['testDetails']['test_id']] = $fileName;
+		    }
+		}
+	    }
+	}
+	return $response;
+    }
+
+    /**
+    * function for Saving and downloadingPDF in DB
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function downloadSavePDF($contentId,$contentType='order'){
+
+        global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	if(!empty($contentId)){
+
+	    $viewData = array();
+
+	    if($contentType == 'order'){
+
+		$jobOrderPrefix = JOB_ORDER_PREFIX;
+		$viewFileName = 'sales.order_master.generateJobOrder';
+		//$viewFileName   = 'sales.order_master.generateJobOrderTesting';
+		$pdfData        = $order->viewOrderDetail($contentId);
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    $fileName    = $jobOrderPrefix.$pdfData['order']['order_no'].'.pdf';
+		    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+		    view()->share('viewData',$pdfData);
+		    $pdf = PDF::loadView($viewFileName);
+		    $pdf->setPaper('a4','portrait')->setWarnings(false);
+		    return $pdf->save($fileNameDir)->download($fileName);
+		}
+	    }else if($contentType == 'report'){
+
+		$dirName      = DOC_ROOT.REPORT_PATH;
+		$reportPrefix = REPORT_PREFIX;
+		$viewFileName = 'sales.reports.generateReport';
+		$pdfData      = $order->viewReportDetail($contentId);
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    $fileName    = $pdfData['order']['report_no'].'.pdf';
+		    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+		    view()->share('viewData',$pdfData);
+		    $pdf = PDF::loadView($viewFileName);
+		    $pdf->setPaper('a4','portrait')->setWarnings(false);
+		    return $pdf->save($fileNameDir)->download($fileName);
+		}
+
+	    }else if($contentType == 'invoice'){
+
+		//directory Path
+		$dirName      		= DOC_ROOT.INVOICE_PATH;
+		$viewFileName 	    	= 'sales.invoices.generateInvoice';
+		$invoiceContentId       = !empty($contentId['invoice_id']) ? $contentId['invoice_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($invoiceContentId){
+
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+		    $pdfData = $invoice->getInvoiceData($invoiceContentId);
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+			$fileNameDownload = $pdfData['invoiceHeader']['invoice_no'].'.pdf';
+			$fileNameDir 	  = preg_replace('/(\/+)/','/',$dirName.$fileNameDownload);
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			return $pdf->save($fileNameDir)->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }
+	}
+    }
+
+    /**
+    * function for Saving and downloadingPDF in DB
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function downloadSaveMailPDF($contentId,$contentType='order'){
+
+        global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	if(!empty($contentId)){
+
+	    $viewData = array();
+
+	    if($contentType == 'report'){
+
+		//directory Path
+		$dirName      		= DOC_ROOT.REPORT_PATH;
+		$reportPrefix 		= REPORT_PREFIX;
+		$viewFileName 		= 'sales.reports.generateReport';
+		$reportContentId        = !empty($contentId['order_id']) ? $contentId['order_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$sendMailToPartType     = !empty($contentId['sendMailType']) ? $contentId['sendMailType'] : '0';
+		$hasContainEquipment    = !empty($contentId['reportType']) ? $contentId['reportType'] : '0';
+		$notContainEquipment    = !empty($contentId['reportWithoutEquipment']) ? $contentId['reportWithoutEquipment'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($reportContentId){
+
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+		    $pdfData = $order->viewReportDetail($reportContentId);
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+
+			$fileNameDownload = $pdfData['order']['report_no'].'.pdf';
+			$fileNameDir 	  = preg_replace('/(\/+)/','/',$dirName.$fileNameDownload);
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			view()->share('hasContainEquipment',$hasContainEquipment);
+			view()->share('notContainEquipment',$notContainEquipment);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+
+			//Sending Report Mail To Customer/Party**********************
+			if($sendMailToPartType == '4' && $pdf->save($fileNameDir)){
+			    if($mail->sendMail(array('postedData'=> $contentId,'order_id' => $reportContentId, 'mailTemplateType' => '3'))){
+				//File::delete($fileNameDir);
+				$report->updateReportTypeOnReportGeneration($reportContentId,$hasContainHeaderFooter);
+				return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+			    }else{
+				Session::put('errorMsg', config('messages.message.mailSendErrorMsg'));
+				return redirect('dashboard');
+			    }
+			}else{
+			    return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+			}
+		    }
+		}
+	    }else if($contentType == 'invoice'){
+
+		//directory Path
+		$dirName      		= DOC_ROOT.INVOICE_PATH;
+		$viewFileName 	    	= 'sales.invoices.generateInvoice';
+		$invoiceContentId       = !empty($contentId['invoice_id']) ? $contentId['invoice_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$sendMailToPartType     = !empty($contentId['sendMailType']) ? $contentId['sendMailType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($invoiceContentId){
+
+		    if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+		    $pdfData = $invoice->getInvoiceData($invoiceContentId);
+
+		    if(!empty($pdfData) && is_dir($dirName)){
+
+			$fileNameDownload = $pdfData['invoiceHeader']['invoice_no'].'.pdf';
+			$fileNameDir 	  = preg_replace('/(\/+)/','/',$dirName.$fileNameDownload);
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+
+			//Sending Report Mail To Customer/Party**********************
+			if($sendMailToPartType == '4' && $pdf->save($fileNameDir)){
+			    if($mail->sendMail(array('invoice_id' => $invoiceContentId, 'mailTemplateType' => '4'))){
+				//File::delete($fileNameDir);
+				return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+			    }else{
+				Session::put('errorMsg', config('messages.message.mailSendErrorMsg'));
+				return redirect('dashboard');
+			    }
+			}else{
+			    return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+    /**
+     * function for downloadingPDF in DB
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPDF($contentId,$contentType='order'){
+
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	if(!empty($contentId)){
+
+	    $viewData = array();
+
+	    if($contentType == 'order'){
+
+		//directory Path
+		$jobOrderPrefix 		= JOB_ORDER_PREFIX;
+		$viewFileWithoutPartyDetail  	= 'sales.order_master.generateJobOrderWithoutPartyDetail';
+		$viewFileWithPartyDetail   	= 'sales.order_master.generateJobOrderWithPartyDetail';
+		$reportContentId        	= !empty($contentId['order_id']) ? $contentId['order_id'] : '0';
+		$hasContainHeaderFooter 	= !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$headerFooterFilePrefix 	= $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+		$viewFileName			= $hasContainHeaderFooter == '1' ? $viewFileWithoutPartyDetail : $viewFileWithPartyDetail;
+
+		if($reportContentId){
+		    $pdfData = $order->viewOrderDetail($reportContentId);
+		    if(!empty($pdfData)){
+			$fileNameDownload = $jobOrderPrefix.$pdfData['order']['order_no'].'.pdf';
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }else if($contentType == 'jobSheet'){
+
+		//directory Path
+		$viewFileName   		= 'schedulings.jobPrint.generateAnalyticalSheet';
+		$reportContentId                = !empty($contentId['order_id']) ? $contentId['order_id'] : '0';
+		$containAnalyticalOrCalculation = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$analyticalCalculationPrefix    = $containAnalyticalOrCalculation == '1' ? '-as' : '-cs';
+
+		if($reportContentId){
+		    $pdfData = $order->viewOrderDetail($reportContentId);
+		    if(!empty($pdfData)){
+			$fileNameDownload = $pdfData['order']['order_no'].$analyticalCalculationPrefix.'.pdf';
+			view()->share('containAnalyticalOrCalculation',$containAnalyticalOrCalculation);
+			view()->share('viewData',$pdfData);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }else if($contentType == 'report'){
+
+		//directory Path
+		$reportPrefix 		= REPORT_PREFIX;
+		$viewFileName 		= 'sales.reports.generateReport';
+		$reportContentId        = !empty($contentId['order_id']) ? $contentId['order_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($reportContentId){
+		    $pdfData = $order->viewReportDetail($reportContentId);
+		    if(!empty($pdfData)){
+			$fileNameDownload = $pdfData['order']['report_no'].$headerFooterFilePrefix.'.pdf';
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }else if($contentType == 'invoice'){
+
+		//directory Path
+		$viewFileName 	    	= 'sales.invoices.generateInvoice';
+		$invoiceContentId       = !empty($contentId['invoice_id']) ? $contentId['invoice_id'] : '0';
+		$hasContainHeaderFooter = !empty($contentId['downloadType']) ? $contentId['downloadType'] : '0';
+		$headerFooterFilePrefix = $hasContainHeaderFooter == '1' ? '-hf' : '-whf';
+
+		if($invoiceContentId){
+		    $pdfData = $invoice->getInvoiceData($invoiceContentId);
+		    if(!empty($pdfData)){
+			$fileNameDownload = $pdfData['invoiceHeader']['invoice_no'].$headerFooterFilePrefix.'.pdf';
+			view()->share('viewData',$pdfData);
+			view()->share('hasContainHeaderFooter',$hasContainHeaderFooter);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','portrait')->setWarnings(false);
+			return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }else if($contentType == 'analystSheet'){
+
+		//directory Path
+		$dirName      = DOC_ROOT.ANALYST_PATH;
+		$viewFileName = 'schedulings.jobPrint.generateAnalystJobSheetPrint';
+
+		$pdfData = !empty($contentId['data']) ? $contentId['data'] : '0';
+		$heading = !empty($contentId['heading']) ? $contentId['heading'] : '';
+		if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		if(!empty($pdfData)){
+		    foreach($pdfData as $key => $value){
+			$fileNameDownload = $heading.'-analyst-sheet-'.date('mY').'.pdf';
+			view()->share('viewData',$pdfData);
+			view()->share('heading',$heading);
+			$pdf = PDF::loadView($viewFileName);
+			$pdf->setPaper('a4','landscape')->setWarnings(false);
+			return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		    }
+		}
+	    }else if($contentType == 'product_test'){
+
+		$dirName        	= DOC_ROOT.PRODUCT_TEST_PATH;
+		$productTestPrefix 	= PRODUCT_TEST_PREFIX;
+		$viewFileName   	= 'master.standard_wise_product_test.product_tests.generateProductTestParameterList';
+		$pdfData[$contentId] 	= $this->getProductTestParametersList($contentId);
+		if(!is_dir($dirName)){mkdir($dirName, 0777, true);}
+
+		if(!empty($pdfData) && is_dir($dirName)){
+		    $fileName    = $productTestPrefix.$pdfData[$contentId]['testDetails']['test_code'].'.pdf';
+		    $fileNameDir = preg_replace('/(\/+)/','/',$dirName.$fileName);
+		    view()->share('viewData',$pdfData[$contentId]);
+		    $pdf = PDF::loadView($viewFileName);
+		    $pdf->setPaper('a4','portrait')->setWarnings(false);
+		    return $pdf->download($fileName);
+		}
+	    }else if($contentType == 'report_pendency'){
+
+		$dirName        = DOC_ROOT;
+		$reportPrefix   = REPORT_PREFIX;
+		$viewFileName  	= 'sales.reports.generateBranchWiseReport';
+		$pdfData 	= $contentId;
+
+		if(!empty($pdfData)){
+		    $fileNameDownload = 'reports.pdf';
+		    view()->share('viewData',$pdfData);
+		    $pdf = PDF::loadView($viewFileName);
+		    $pdf->setPaper('a4','landscape')->setWarnings(false);
+		    return $pdf->stream($fileNameDownload,array('Attachment'=>0));
+		}
+	    }
+	}
+    }
+
+    /**
+     * function for downloadingPDF in DB
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function generateExcel($documentData){
+
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	// file name for download
+	$fileNamePrefix = !empty($documentData['mis_report_name']) ? trim($documentData['mis_report_name']) : 'reports';
+
+	$headingPrefix  = !empty($documentData['heading']) ? trim($documentData['heading']) : 'Reports';
+	$fileName       = $fileNamePrefix.'_'.date('Ymd') . ".xls";
+
+	// headers for download
+	header("Content-Disposition: attachment; filename=\"$fileName\"");
+	header("Content-Type: application/vnd.ms-excel");
+
+	//display Heading names
+	echo $headingPrefix. "\n\n";
+	
+	//Displaying Extra Detail
+	if(!empty($documentData['extraHeading'])){
+	    echo $documentData['extraHeading']. "\n\n";
+	}
+
+	//Table Header Name
+	$headingData = $documentData['tableHead'];
+
+	$headingData = array_map(function ($headingData){return $this->filterTableHead($headingData);}, $headingData);
+	echo implode("\t", $headingData) . "\n";	//display column names as first row
+
+	//Table Body Data
+	if(!empty($documentData['tableBody'])){
+	    foreach($documentData['tableBody'] as $row){
+		$row=$this->filterTableBody($row);
+		echo implode("\t", array_values($row)) . "\n";
+	    }
+	}
+
+	//display one blank TR
+	echo "\n";
+
+	//Table Foot Data
+	if(!empty($documentData['tablefoot'])){
+	    foreach($documentData['tablefoot'] as $key => $row){
+		echo implode("\t", array_values($row)) . "\n";
+	    }
+	}
+	exit;
+    }
+
+    /**
+     * function for downloadingPDF in DB
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadExcel($documentData,$submitedData){
+
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+
+	// file name for download
+	$fileNamePrefix = !empty($submitedData['mis_report_name']) ? trim($submitedData['mis_report_name']) : 'reports';
+
+	$headingPrefix  = !empty($submitedData['heading']) ? trim($submitedData['heading']) : 'Reports';
+	$fileName       = $fileNamePrefix.'_'.date('Ymd') . ".xls";	
+
+	// headers for download
+	header("Content-Disposition: attachment; filename=\"$fileName\"");
+	header("Content-Type: application/vnd.ms-excel");
+
+	//display Heading names
+	echo $headingPrefix. "\n\n";
+	
+	//Displaying Extra Detail
+	if(!empty($documentData['extraHeading'])){
+	    echo $documentData['extraHeading']. "\n\n";
+	}
+
+	//Table Header Name
+	$headingData = $documentData['tableHead'];
+
+	$headingData = array_map(function ($headingData){return $this->filterTableHead($headingData);}, $headingData);
+	echo implode("\t", $headingData) . "\n";	//display column names as first row
+
+	//Table Body Data
+	if(!empty($documentData['tableBody'])){
+	    foreach($documentData['tableBody'] as $row){
+		$row=$this->filterTableBody($row);
+		echo implode("\t", array_values($row)) . "\n";
+	    }
+	}
+
+	//display one blank TR
+	echo "\n";
+
+	//Table Foot Data
+	if(!empty($documentData['tablefoot'])){
+	    foreach($documentData['tablefoot'] as $key => $row){
+		echo implode("\t", array_values($row)) . "\n";
+	    }
+	}
+	exit;
+    }
+
+    /**sort array in asc order
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function filterTableHead($tableHead){
+	return str_replace('_', ' ', strtoupper($tableHead));
+    }
+
+    /**sort array in asc order
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function filterTableBody($tableBody){
+	$returnBodyArray = array();
+	foreach($tableBody as $key=>$value){
+		$returnBodyArray[] = trim(str_replace("","",strip_tags($value)));
+	}
+	return $returnBodyArray;
+    }
+
+    /**
+    * get product test parameter and parameter category list
+    *
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function getProductTestParametersList($test_id){
+
+        $returnData = array();
+
+        $testDetails = DB::table('product_test_hdr')
+			->join('product_master','product_master.product_id','product_test_hdr.product_id')
+			->join('test_standard','test_standard.test_std_id','product_test_hdr.test_standard_id')
+			->where('product_test_hdr.test_id',$test_id)
+			->first();
+
+	$productTestParametersList = DB::table('product_test_dtl')
+				->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+				->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+				->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+				->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')
+				->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')
+				->select('product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+				->where('product_test_dtl.test_id',$test_id)
+				->orderBy('product_test_dtl.parameter_sort_by','asc')
+				->get();
+
+	$categoryWiseParamenter = array();
+	if(!empty($productTestParametersList)){
+	    foreach($productTestParametersList as $key => $values){
+		$categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     = $values->category_sort_by;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     = $values->test_para_cat_id;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     = $values->test_para_cat_name;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] = $values;
+	    }
+	    $categoryWiseParamenter = array_values($categoryWiseParamenter);
+	}
+
+	$testParameterList = $this->sortArrayAscOrder($categoryWiseParamenter);
+
+	if(!empty($testDetails) && !empty($testParameterList)){
+	    $returnData['testDetails'] = $testDetails;
+	    $returnData['testParameterList'] = $testParameterList;
+	    $returnData  = json_decode(json_encode($returnData),true);
+	}
+	return $returnData;
+    }
+
+    /**sort array in asc order
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function sortArrayAscOrder($dataArray){
+	$sortedArr = array();
+	foreach ($dataArray as $key => $row){
+	    $sortedArr[$key] = $row;
+	}
+	array_multisort($sortedArr, SORT_ASC, $dataArray);
+	return $sortedArr;
+    }
+
+    //get table unique id by table field name
+    public function getTableUniqueIdByName($table_name,$field_name,$field_value,$return_field){
+	if(!empty($field_value)){
+	    $data = DB::table($table_name)->where($field_name, '=', $field_value)->first();
+	    if(isset($data->$return_field)){
+		return $data->$return_field;
+	    }else{
+		return false;
+	    }
+	}else{
+	    return false;
+	}
+    }
+
+	/**
+     * Creating date collection between two dates
+     * @param string since any date, time or datetime format
+     * @param string until any date, time or datetime format
+     * @param string step
+     * @param string date of output format
+     * @return array
+     */
+    function date_range($firstDate, $lastDate, $step = '+1 day', $format = 'Y-m-d'){
+
+	$dates   = array();
+	$current = strtotime($firstDate);
+	$last    = strtotime($lastDate);
+	while( $current <= $last ) {
+	    $dates[] = date($format, $current);
+	    $current = strtotime($step, $current);
+	}
+	return $dates;
+    }
+
+    /**
+     * Creating date collection between two dates
+     * @param string since any date, time or datetime format
+     * @param string until any date, time or datetime format
+     * @param string step
+     * @param string date of output format
+     * @return array
+     */
+    function add_days_in_date($date, $days ,$format = 'Y-m-d'){
+	return date($format, strtotime($date. ' + '.$days.' days'));
+    }
+
+    /**
+     * Creating date collection between two dates
+     * @param string since any date, time or datetime format
+     * @param string until any date, time or datetime format
+     * @param string step
+     * @param string date of output format
+     * @return array
+     */
+    function sub_days_in_date($date, $days ,$format = 'Y-m-d'){
+	return date($format, strtotime($date. ' - '.$days.' days'));
+    }
+    
+     /**
+     * Creating date collection between two dates
+     * @param string since any date, time or datetime format
+     * @param string until any date, time or datetime format
+     * @param string step
+     * @param string date of output format
+     * @return array
+     */
+    public function sub_days_between_two_date($fromDate,$toDate){
+	$daysLeft = 0;
+	$daysLeft = abs(strtotime($fromDate) - strtotime($toDate));
+	$days     = round($daysLeft/(60 * 60 * 24));
+	return $days;
+    }
+
+    /**
+     * Creating date collection between two dates
+     * @param string since any date, time or datetime format
+     * @param string until any date, time or datetime format
+     * @param string step
+     * @param string date of output format
+     * @return array
+     */
+    function month_range($firstDate, $lastDate,$format = 'Y-m-d'){
+
+	$output = array();
+	$time   = strtotime($firstDate);
+	$last   = date('m-Y', strtotime($lastDate));
+
+	do {
+	    $month     = date('m-Y', $time);
+	    $monthData = date('d-m-Y', $time);
+	    $output[]  = $monthData;
+	    $time      = strtotime('+1 month', $time);
+	} while ($month != $last);
+
+	return $output;
+    }
+
+    /*
+    * @author        Praveen Singh
+    * @method        date_hour_min_sec_ago
+    */
+    function date_hour_min_sec_ago($fromDate,$toDate){
+
+	$string = "";
+
+	//global  MONTHS, MONTH, DAYS, DAY, YEARS, YEAR, MINUTE, MINS, WEEK, WEEKS;
+	$time = $this->__dateDiffNew($fromDate, $toDate);
+
+	if(array_key_exists('year', $time)){
+	    $string .= $time['year'];
+	    if(array_key_exists('month', $time)) {
+		    $string .= $time['month'];
+	    }
+	}else if(array_key_exists('month', $time)) {
+	    if(array_key_exists('week', $time)) {
+		    if($time['week']>3) {
+			    $time['month'] = $time['month']+1;
+		    }
+	    }
+	    if($time['month']!=1)
+		    $string .= $time['month']." ".'Months';
+	    else
+		    $string .= $time['month']." ".'Month';
+	}
+	else if(array_key_exists('week', $time)) {
+	    if(array_key_exists('day', $time)) {
+		    if($time['day']>3) {
+			    $time['week'] = $time['week']+1;
+		    }
+	    }
+	    if($time['week']!=1)
+		    $string .= $time['week']." ".'Weeks';
+	    else
+		    $string .= $time['week']." ".'Week';
+	}else if(array_key_exists('day', $time)) {
+	    if(array_key_exists('hour', $time)) {
+		    if($time['hour']>13) {
+			    $time['day'] = $time['day']+1;
+		    }
+	    }
+	    if($time['day']!=1)
+		    $string .= $time['day']." ".'Days';
+	    else
+		    $string .= $time['day']." ".'Day';
+	}else if(array_key_exists('hour', $time)) {
+	    if(array_key_exists('minute', $time)) {
+		    if($time['minute']>30) {
+			    $time['hour'] = $time['hour']+1;
+		    }
+	    }
+	    if($time['hour']!=1)
+		    $string .= $time['hour']." ".'Hrs';
+	    else
+		    $string .= $time['hour']." ".'Hr';
+	}else if(array_key_exists('minute', $time)) {
+	    if($time['minute']!=1)
+		    $string .= $time['minute']." ".'Mins';
+	    else
+		    $string .= $time['minute']." ".'Min';
+	}else{
+		$string .= "0 ".'Min';
+	}
+	return $string;
+    }
+
+    /*
+    * @author        Praveen Singh
+    * @method        __dateDiffNew
+    */
+    function __dateDiffNew($time1, $time2, $precision = 6) {
+
+	// Returns difference as days, months ,weeks, seconds ,minutes etc.
+	// If not numeric then convert texts to unix timestamps
+	if (!is_int($time1)) {
+	  $time1 = strtotime($time1);
+	}
+	if (!is_int($time2)) {
+	  $time2 = strtotime($time2);
+	}
+
+	// Then swap time1 and time2
+	if ($time1 > $time2) {
+	    $ttime = $time1;
+	    $time1 = $time2;
+	    $time2 = $ttime;
+	}
+
+	// Set up intervals and diffs arrays
+	$intervals = array('year','month','week','day','hour','minute','second');
+	$diffs     = array();
+
+	// Loop thru all intervals
+	foreach ($intervals as $interval) {
+	    // Set default diff to 0
+	    $diffs[$interval] = 0;
+	    // Create temp time from time1 and interval
+	    $ttime = strtotime("+1 " . $interval, $time1);
+	    // Loop until temp time is smaller than time2
+	    while ($time2 >= $ttime) {
+		$time1 = $ttime;
+		$diffs[$interval]++;
+		// Create new temp time from time1 and interval
+		$ttime = strtotime("+1 " . $interval, $time1);
+	    }
+	}
+
+	$count = 0;
+	$times = array();
+	// Loop thru all diffs
+	foreach ($diffs as $interval => $value) {
+	    // Break if we have needed precission
+	    if ($count >= $precision) {
+		break;
+	    }
+	    // Add value and interval
+	    // if value is bigger than 0
+	    if ($value > 0) {
+		// Add value and interval to times array
+		$times[$interval] = $value  ;
+		$count++;
+	    }
+	}
+	return $times;
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function formDataVariables($formData,$invoicingTypeId){
+
+	$returnData 			= array();
+	$cirCustomerId 			= !empty($formData['cir_customer_id']) ? $formData['cir_customer_id'] : '';
+	$cirProductCategoryId 		= !empty($formData['cir_product_category_id']) ? $formData['cir_product_category_id'] : '';
+	$cirCustParameterIdData		= !empty($formData['cir_parameter_id']) ? array_values($formData['cir_parameter_id']) : array();
+	$equipmentTypeData 		= !empty($formData['cir_equipment_type_id']) ? array_values($formData['cir_equipment_type_id']) : array();
+	$testStandardData		= !empty($formData['cir_test_standard_id']) ? array_values($formData['cir_test_standard_id']) : array();
+	$cirDivisionId 			= !empty($formData['cir_division_id']) ? $formData['cir_division_id'] : '';
+
+	if(!empty($cirCustomerId) && !empty($formData['invoicing_rate'])){
+	    foreach($formData['invoicing_rate'] as $key => $rate){
+		$returnData[$key]['cir_customer_id']   		= $cirCustomerId;
+		$returnData[$key]['invoicing_type_id'] 		= $invoicingTypeId;
+		$returnData[$key]['cir_parameter_id']  		= !empty($cirCustParameterIdData[$key]) ? $cirCustParameterIdData[$key] : '';
+		$returnData[$key]['invoicing_rate']    		= !empty($rate) ? $rate : '';
+		$returnData[$key]['cir_equipment_type_id']  	= !empty($equipmentTypeData[$key]) ? $equipmentTypeData[$key] : '';
+		$returnData[$key]['cir_test_standard_id']  	= !empty($testStandardData[$key]) ? $testStandardData[$key] : '';
+		$returnData[$key]['cir_product_category_id']	= $cirProductCategoryId;
+		$returnData[$key]['created_by']  		= USERID;
+		$returnData[$key]['cir_division_id']   		= $cirDivisionId;
+	    }
+	}
+	return $returnData;
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getRequirementSTDFromToNew($values,$stdFrom,$stdTo){
+	if(!empty($values)){
+	    if(!empty($stdFrom) && !empty($stdTo)){
+		if(strtolower($stdFrom) == 'n/a' && strtolower($stdTo) == 'n/a'){
+		    $values->requirement_from_to = '';
+		}else if(strtolower($values->standard_value_type) == 'numeric'){
+		    $values->requirement_from_to = round($stdFrom,3).'-'.round($stdTo,3);
+		}else if(strtolower($values->standard_value_type) == 'alphanumeric'){
+		    $values->requirement_from_to = trim($stdFrom).'-'.round($stdTo,3);
+		}else if(strtolower($values->standard_value_type) == 'na'){
+		    $values->requirement_from_to = trim($stdFrom).'-'.trim($stdTo);
+		}
+	    }else if(!empty($stdFrom) && empty($stdTo)){
+		if(strtolower($stdFrom) == 'n/a'){
+		    $values->requirement_from_to = '';
+		}else if(is_numeric($stdFrom)){
+		    $values->requirement_from_to = round($stdFrom,3);
+		}else{
+		    $values->requirement_from_to = trim($stdFrom);
+		}
+	    }else if(empty($stdFrom) && !empty($stdTo)){
+		if(strtolower($stdTo) == 'n/a'){
+		    $values->requirement_from_to = '';
+		}else if(is_numeric($stdTo)){
+		    $values->requirement_from_to = round($stdTo,3);
+		}else{
+		    $values->requirement_from_to = trim($stdTo);
+		}
+	    }
+	}
+    }
+    
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getRequirementSTDFromTo($values,$stdFrom,$stdTo){
+	if(!empty($values)){
+	    if($values->product_category_id == '2'){
+		$this->getRequirementSTDFromTo_v3($values,$stdFrom,$stdTo);
+	    }else{
+		$this->getRequirementSTDFromTo_v2($values,$stdFrom,$stdTo);
+	    }
+	}
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getRequirementSTDFromTo_v2($values,$stdFrom,$stdTo){
+	if(!empty($values)){
+	    if(!empty($stdFrom) && !empty($stdTo)){
+		if(strtolower($stdFrom) == 'n/a' && strtolower($stdTo) == 'n/a'){
+		    $values->requirement_from_to = '';
+		}else if(strtolower($stdFrom) != 'n/a' && strtolower($stdTo) != 'n/a'){
+		    if(is_numeric($stdFrom) && is_numeric($stdTo)){
+			$values->requirement_from_to = round($stdFrom,3).'-'.round($stdTo,3);
+		    }else if(is_numeric($stdFrom) && !is_numeric($stdTo)){
+			$values->requirement_from_to = round($stdFrom,3).'-'.$stdTo;
+		    }else if(!is_numeric($stdFrom) && is_numeric($stdTo)){
+			$values->requirement_from_to = $stdFrom.'-'.round($stdTo,3);
+		    }else{
+			$values->requirement_from_to = $stdFrom.'-'.$stdTo;
+		    }
+		}else if(strtolower($stdFrom) != 'n/a' && strtolower($stdTo) == 'n/a'){
+		    $values->requirement_from_to = $stdFrom;
+		}else if(strtolower($stdFrom) == 'n/a' && strtolower($stdTo) != 'n/a'){
+		    $values->requirement_from_to = $stdTo;
+		}
+	    }else if(!empty($stdFrom) && empty($stdTo)){
+		if(is_numeric($stdFrom)){
+		    $values->requirement_from_to = round($stdFrom,3);
+		}else{
+		    $values->requirement_from_to = $stdFrom;
+		}
+	    }else if(empty($stdFrom) && !empty($stdTo)){
+		if(is_numeric($stdTo)){
+		    $values->requirement_from_to = round($stdTo,3);
+		}else{
+		    $values->requirement_from_to = $stdTo;
+		}
+	    }
+	}
+    }
+    
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getRequirementSTDFromTo_v3($values,$stdFrom,$stdTo){
+
+	$decimalPlaces = 3;
+	$decimalFlag   = 0;
+	if(!empty($values->claim_value)){
+	    $claimValueArray = explode('.',$values->claim_value);
+	    if(isset($claimValueArray[1])){
+		$decimalFlag = 1;
+		$decimalPlaces = strlen($claimValueArray[1]);
+	    }else{
+		$decimalPlaces = 3;
+	    }
+	}
+	if(!empty($stdFrom) && !empty($stdTo)){
+	    if(strtolower($stdFrom) == 'n/a' && strtolower($stdTo) == 'n/a'){
+		$values->requirement_from_to = '';
+	    }else if(strtolower($stdFrom) != 'n/a' && strtolower($stdTo) != 'n/a'){
+		if(is_numeric($stdFrom) && is_numeric($stdTo)){
+		    if($decimalFlag){
+			$standard_value_from_array 	= explode('.',$stdFrom);
+			$standard_value_to_array	= explode('.',$stdTo);
+			$decimal_value_from_pII 	= isset($standard_value_from_array[1]) ? '.'.substr($standard_value_from_array[1],0,$decimalPlaces) : '';
+			$decimal_value_to_pII   	= isset($standard_value_to_array[1]) ? '.'.substr( $standard_value_to_array[1],0,$decimalPlaces) : '';
+			$values->requirement_from_to    = $standard_value_from_array[0].$decimal_value_from_pII.'-'.$standard_value_to_array[0].$decimal_value_to_pII;
+		    }else{
+			$values->requirement_from_to = round($stdFrom,$decimalPlaces).'-'.round($stdTo,$decimalPlaces);
+		    }
+		}else if(is_numeric($stdFrom) && !is_numeric($stdTo)){
+		    if($decimalFlag){
+			$standard_value_from_array 	= explode('.',$stdFrom);
+			$decimal_value_from_pII 	= isset($standard_value_from_array[1]) ? '.'.substr($standard_value_from_array[1],0,$decimalPlaces) : '';
+			$values->requirement_from_to    = $standard_value_from_array[0].$decimal_value_from_pII.'-'.$standard_value_to_array[0].$decimal_value_to_pII;
+		    }else{
+			$values->requirement_from_to = round($stdFrom,$decimalPlaces).'-'.$stdTo;
+		    }
+		}else if(!is_numeric($stdFrom) && is_numeric($stdTo)){
+		    if($decimalFlag){
+		       $standard_value_to_array	= explode('.',$stdTo);
+		       $decimal_value_to_pII   	= isset($standard_value_to_array[1]) ? '.'.substr( $standard_value_to_array[1],0,$decimalPlaces) : '';
+			$values->requirement_from_to = $stdFrom.'-'.$standard_value_to_array[0].$decimal_value_to_pII;
+		    }else{
+			$values->requirement_from_to = $stdFrom.'-'.round($stdTo,$decimalPlaces);
+		    }
+		}else if(!is_numeric($stdFrom) && !is_numeric($stdTo)){
+		    $values->requirement_from_to = $stdFrom.'-'.$stdTo;
+		}
+	    }else if(strtolower($stdFrom) != 'n/a' && strtolower($stdTo) == 'n/a'){
+		if(is_numeric($stdFrom)){
+		    if($decimalFlag){
+			$standard_value_from_array 	= explode('.',$stdFrom);
+			$decimal_value_from_pII 	= isset($standard_value_from_array[1]) ? '.'.substr($standard_value_from_array[1],0,$decimalPlaces) : '';
+			$values->requirement_from_to = $standard_value_from_array[0].$decimal_value_from_pII;
+		    }else{
+			$values->requirement_from_to = round($stdFrom,$decimalPlaces);
+		    }
+		}else{
+		    $values->requirement_from_to = $stdFrom;
+		}
+	    }else if(strtolower($stdFrom) == 'n/a' && strtolower($stdTo) != 'n/a'){
+		if(is_numeric($stdTo)){
+		    if($decimalFlag){
+			$standard_value_to_array	= explode('.',$stdTo);
+			$decimal_value_to_pII   	= isset($standard_value_to_array[1]) ? '.'.substr( $standard_value_to_array[1],0,$decimalPlaces) : '';
+			$values->requirement_from_to = $standard_value_to_array[0].$decimal_value_to_pII;
+		    }else{
+			$values->requirement_from_to = round($stdTo,$decimalPlaces);
+		    }
+		}else{
+		    $values->requirement_from_to = $stdTo;
+		}
+	    }
+	}else if(!empty($stdFrom) && empty($stdTo)){
+	    if(is_numeric($stdFrom)){
+		if($decimalFlag){
+		    $standard_value_from_array 	= explode('.',$stdFrom);
+		    $decimal_value_from_pII 	= isset($standard_value_from_array[1]) ? '.'.substr($standard_value_from_array[1],0,$decimalPlaces) : '';
+		    $values->requirement_from_to = $standard_value_from_array[0].$decimal_value_from_pII;
+		}else{
+		    $values->requirement_from_to = round($stdFrom,$decimalPlaces);
+		}
+	    }else{
+		$values->requirement_from_to = $stdFrom;
+	    }
+	}else if(empty($stdFrom) && !empty($stdTo)){
+	    if(is_numeric($stdTo)){
+		if($decimalFlag){
+		    $standard_value_to_array	= explode('.',$stdTo);
+		    $decimal_value_to_pII   	= isset($standard_value_to_array[1]) ? '.'.substr( $standard_value_to_array[1],0,$decimalPlaces) : '';
+		    $values->requirement_from_to = $standard_value_to_array[0].$decimal_value_to_pII;
+		}else{
+		    $values->requirement_from_to = round($stdTo,$decimalPlaces);
+		}
+	    }else{
+		$values->requirement_from_to = $stdTo;
+	    }
+	}
+    }
+
+    /**
+    * Display a Rounding of number.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function roundValue($number,$place='2'){
+	return number_format((float) $number, $place, '.', '');
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function getSundays($start, $end) {
+	$timestamp1 = strtotime($start);
+	$timestamp2 = strtotime($end);
+	$sundays    = array();
+	$oneDay     = 60*60*24;
+	for($i = $timestamp1; $i <= $timestamp2; $i += $oneDay) {
+	    $day = date('N', $i);
+	    if($day == 7) {
+		$sundays[] = date('Y-m-d', $i);
+		$i += 6 * $oneDay;
+	    }
+	}
+	return array_filter($sundays);
+    }
+
+    /**
+    * Display a listing of the resource.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function checkDateIsSunday($currentDate) {
+	return date('N', strtotime($currentDate)) == 7 ? true : false;
+    }
+
+    /**
+    * Displaying mail Setting Variables-Booking
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function __mailSettingVariablesBooking($productCategoryId) {
+
+	$emailTemplateBlade = $fromName = $fromEmail = '';
+
+	if($productCategoryId == '1'){			//Food Department
+	    $emailTemplateBlade = 'email.templates.food.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_FOOD_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_FOOD_BOOKING;
+	}else if($productCategoryId == '2'){		//Pharma Department
+	    $emailTemplateBlade = 'email.templates.pharma.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_PHARMA_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_PHARMA_BOOKING;
+	}else if($productCategoryId == '4'){		//helmet Department
+	    $emailTemplateBlade = 'email.templates.helmet.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_HELMET_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_HELMET_BOOKING;
+	}else if($productCategoryId == '5'){		//ayurvedic Department
+	    $emailTemplateBlade = 'email.templates.ayurvedic.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_AYURVEDIC_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_AYURVEDIC_BOOKING;
+	}else if($productCategoryId == '6'){		//building Department
+	    $emailTemplateBlade = 'email.templates.building.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_BUILDING_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_BUILDING_BOOKING;
+	}else if($productCategoryId == '7'){		//Textile Department
+	    $emailTemplateBlade = 'email.templates.textile.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_TEXTILE_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_TEXTILE_BOOKING;
+	}else if($productCategoryId == '8'){		//environment Department
+	    $emailTemplateBlade = 'email.templates.environment.emailOrderBooking';
+	    $fromName 	    = FROM_NAME_ENVIRONMENT_BOOKING;
+	    $fromEmail 	    = FROM_EMAIL_ENVIRONMENT_BOOKING;
+	}
+
+	return array($emailTemplateBlade,$fromName,$fromEmail);
+    }
+
+    /**
+    * Displaying mail Setting Variables-Reporting
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function __mailSettingVariablesReports($productCategoryId) {
+
+	$emailTemplateBlade = $fromName = $fromEmail = '';
+
+	if($productCategoryId == '1'){			//Food Department
+	    $emailTemplateBlade = 'email.templates.food.emailReport';
+	    $fromName 	    = FROM_NAME_FOOD_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_FOOD_REPORT;
+	}else if($productCategoryId == '2'){		//Pharma Department
+	    $emailTemplateBlade = 'email.templates.pharma.emailReport';
+	    $fromName 	    = FROM_NAME_PHARMA_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_PHARMA_REPORT;
+	}else if($productCategoryId == '4'){		//helmet Department
+	    $emailTemplateBlade = 'email.templates.helmet.emailReport';
+	    $fromName 	    = FROM_NAME_HELMET_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_HELMET_REPORT;
+	}else if($productCategoryId == '5'){		//ayurvedic Department
+	    $emailTemplateBlade = 'email.templates.ayurvedic.emailReport';
+	    $fromName 	    = FROM_NAME_AYURVEDIC_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_AYURVEDIC_REPORT;
+	}else if($productCategoryId == '6'){		//building Department
+	    $emailTemplateBlade = 'email.templates.building.emailReport';
+	    $fromName 	    = FROM_NAME_BUILDING_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_BUILDING_REPORT;
+	}else if($productCategoryId == '7'){		//textile Department
+	    $emailTemplateBlade = 'email.templates.textile.emailReport';
+	    $fromName 	    = FROM_NAME_TEXTILE_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_TEXTILE_REPORT;
+	}else if($productCategoryId == '8'){		//environment Department
+	    $emailTemplateBlade = 'email.templates.environment.emailReport';
+	    $fromName 	    = FROM_NAME_ENVIRONMENT_REPORT;
+	    $fromEmail 	    = FROM_EMAIL_ENVIRONMENT_REPORT;
+	}
+
+	return array($emailTemplateBlade,$fromName,$fromEmail);
+    }
+
+    /**
+    * Displaying mail Setting Variables-Invoicing
+    *
+    * @return \Illuminate\Http\Response
+    */
+    function __mailSettingVariablesInvoics($productCategoryId) {
+
+	$emailTemplateBlade = $fromName = $fromEmail = '';
+
+	if($productCategoryId == '1'){		//Food Department
+	    $emailTemplateBlade = 'email.templates.food.emailInvoice';
+	    $fromName 	    = FROM_NAME_FOOD_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_FOOD_INVOICE;
+	}else if($productCategoryId == '2'){	//Pharma Department
+	    $emailTemplateBlade = 'email.templates.pharma.emailInvoice';
+	    $fromName 	    = FROM_NAME_PHARMA_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_PHARMA_INVOICE;
+	}else if($productCategoryId == '4'){		//helmet Department
+	    $emailTemplateBlade = 'email.templates.helmet.emailInvoice';
+	    $fromName 	    = FROM_NAME_HELMET_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_HELMET_INVOICE;
+	}else if($productCategoryId == '5'){		//helmet Department
+	    $emailTemplateBlade = 'email.templates.ayurvedic.emailInvoice';
+	    $fromName 	    = FROM_NAME_AYURVEDIC_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_AYURVEDIC_INVOICE;
+	}else if($productCategoryId == '6'){	//building Department
+	    $emailTemplateBlade = 'email.templates.building.emailInvoice';
+	    $fromName 	    = FROM_NAME_BUILDING_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_BUILDING_INVOICE;
+	}else if($productCategoryId == '7'){	//textile Department
+	    $emailTemplateBlade = 'email.templates.textile.emailInvoice';
+	    $fromName 	    = FROM_NAME_TEXTILE_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_TEXTILE_INVOICE;
+	}else if($productCategoryId == '9'){	//environment Department
+	    $emailTemplateBlade = 'email.templates.environment.emailInvoice';
+	    $fromName 	    = FROM_NAME_ENVIRONMENT_INVOICE;
+	    $fromEmail 	    = FROM_EMAIL_ENVIRONMENT_INVOICE;
+	}
+
+	return array($emailTemplateBlade,$fromName,$fromEmail);
+    }
+    
+    /*************************
+    *Claim value validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * 26-02-2018
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function changeArrayValues($data){
+	foreach($data as $k => $v){
+	    if($v == '5'){
+		$data[$k] = '0';
+	    }else{
+		$data[$k] = $v;
+	    }
+	}
+	return $data;
+    }
+
+    /*************************
+    *Claim value validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * 26-02-2018
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function claimValueValidation($orderParameterDetail){
+	if(!empty($orderParameterDetail)){
+	    $claimDependent = !empty($orderParameterDetail['claim_dependent']) ? array_filter($orderParameterDetail['claim_dependent']): '';
+	    $claimValue     = !empty($orderParameterDetail['claim_value']) ? array_filter($orderParameterDetail['claim_value']) : NULL;
+	    if(!empty($claimDependent) && count($claimDependent) != count($claimValue)){
+		return true;
+	    }else{
+		return false;
+	    }
+	}
+    }
+
+    /*************************
+    * Claim value unit validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function claimUnitValidation($orderParameterDetail){
+	if(!empty($orderParameterDetail)){
+	    $claimDependent = !empty($orderParameterDetail['claim_dependent']) ? array_filter($orderParameterDetail['claim_dependent']): '';
+	    $claimUnit 	    = !empty($orderParameterDetail['claim_value_unit']) ? array_filter($orderParameterDetail['claim_value_unit']) : NULL;
+	    if(!empty($claimDependent) && (count($claimDependent) != count($claimUnit))){
+		return true;
+	    }else{
+		return false;
+	    }
+	}
+    }
+
+    /*************************
+    * Running Time validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function runningTimeValidation($orderParameterDetail){	
+	if(!empty($orderParameterDetail['cwap_invoicing_required'])){	    
+	    $cwapInvoicingRequired = !empty($orderParameterDetail['cwap_invoicing_required']) ? array_filter($orderParameterDetail['cwap_invoicing_required']): array();
+	    $postedRunningTimeId   = !empty($orderParameterDetail['running_time_id']) ? array_filter($this->changeArrayValues($orderParameterDetail['running_time_id'])) : array();
+	    if(!empty($cwapInvoicingRequired) && !empty($postedRunningTimeId)){
+		if(count($cwapInvoicingRequired) == count($postedRunningTimeId)){
+		    return true;
+		}else{
+		    return false;
+		}
+	    }else{
+		return true;
+	    }
+	}else{
+	    return true;
+	}
+    }
+    
+    /*************************
+    * Running Time validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function runningTimeEditValidation($orderParameterDetailRaw){
+	
+	$orderParameterDetail = $flag = array();
+	
+	//Newly Added Parameters
+	if(!empty($orderParameterDetailRaw)){
+	    foreach($orderParameterDetailRaw as $key => $values){
+		$key = str_replace("'","",$key);
+		if($key == 'new'){
+		    $orderParameterDetail = array_values($values);
+		}
+	    }
+	}
+	if(!empty($orderParameterDetail)){
+	    foreach($orderParameterDetail as $orderParameters){
+		if(!empty($orderParameters['cwap_invoicing_required'])){
+		    if(empty($orderParameters['running_time_id'])){
+			$flag[] = '0';
+		    }else{
+			$flag[] = '1';
+		    }
+		}else{
+		    $flag[] = '1';
+		}
+	    }
+	}else{
+	    $flag[] = '1';
+	}
+	
+	//echo '<pre>';print_r($orderParameterDetail);die;	
+	return !empty($flag) && in_array(0,$flag) ? false : true;
+    }
+
+    /**********************************************
+    * Running Time validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    **********************************************/
+    public function noOfInjectionValidation($orderParameterDetail){
+	if(!empty($orderParameterDetail['cwap_invoicing_required'])){
+	    $cwapInvoicingRequired = !empty($orderParameterDetail['cwap_invoicing_required']) ? array_filter($orderParameterDetail['cwap_invoicing_required']): array();
+	    $postedNo0fInjection   = !empty($orderParameterDetail['no_of_injection']) ? array_filter($orderParameterDetail['no_of_injection']) : array();
+	    if(!empty($cwapInvoicingRequired) && !empty($postedNo0fInjection)){
+		if(count($cwapInvoicingRequired) == count($postedNo0fInjection)){
+		    return true;
+		}else{
+		    return false;
+		}
+	    }else{
+		return true;
+	    }
+	}else{
+	    return true;
+	}
+    }
+    
+    /**********************************************
+    * Running Time validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    **********************************************/
+    public function noOfInjectionEditValidation($orderParameterDetailRaw){
+	
+	$orderParameterDetail = $flag = array();
+	
+	//Newly Added Parameters
+	if(!empty($orderParameterDetailRaw)){
+	    foreach($orderParameterDetailRaw as $key => $values){
+		$key = str_replace("'","",$key);
+		if($key == 'new'){
+		    $orderParameterDetail = $values;
+		}
+	    }
+	}
+	if(!empty($orderParameterDetail)){
+	    foreach($orderParameterDetail as $orderParameters){
+		if(!empty($orderParameters['cwap_invoicing_required'])){
+		    if(empty($orderParameters['no_of_injection'])){
+			$flag[] = '0';
+		    }else{
+			$flag[] = '1';
+		    }
+		}else{
+		    $flag[] = '1';
+		}
+	    }
+	}else{
+	    $flag[] = '1';
+	}
+	
+	//echo '<pre>';print_r($orderParameterDetail);die;	
+	return !empty($flag) && in_array(0,$flag) ? false : true;
+    }
+    
+    /**********************************************
+    * DT Limit validation on Add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    **********************************************/
+    public function checkAddDTLimitValidation($orderParameterDetailRaw){
+	
+	$orderParameterDetail = array();
+	
+	if(!empty($orderParameterDetailRaw)){
+	    foreach($orderParameterDetailRaw as $keyParameter => $orderParametersData){
+		foreach($orderParametersData as $key => $parameters){
+		    $parameters = empty($parameters) ? null : $parameters;
+		    $orderParameterDetail[$key][$keyParameter] = $parameters;
+		}
+	    }	    
+	    foreach($orderParameterDetail as $key => $values){
+		if($values['test_parameter_id'] == '25235' && empty($values['standard_value_to'])){
+		    return false;
+		}
+	    }
+	}
+	return true;
+    }
+    
+    /**********************************************
+    * DT Limit validation on Edit order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    **********************************************/
+    public function checkEditDTLimitValidation($orderParameterDetailRaw){
+	
+	$orderParameterDetail = array();
+	
+	//Newly Added Parameters
+	if(!empty($orderParameterDetailRaw)){
+	    foreach($orderParameterDetailRaw as $key => $values){
+		$key = str_replace("'","",$key);
+		if($key == 'new'){
+		    $orderParameterDetail = $values;
+		}
+	    }
+	}
+	if(!empty($orderParameterDetail)){    
+	    foreach($orderParameterDetail as $key => $values){
+		if($values['test_parameter_id'] == '25235' && empty($values['standard_value_to'])){
+		    return false;
+		}
+	    }
+	}
+	return true;
+    }
+
+    /**
+    * Display a listing of the resource.
+    * 17-04-2018
+    * @return \Illuminate\Http\Response
+    */   
+    function getHolidays($start, $end,$holidays) {
+       $startDateTimeStamp = strtotime($start);
+       $endDateTimeStamp = strtotime($end);
+       $totalHolidays   = array();
+       $oneDay     = 60*60*24;
+	 if($holidays) {
+	   for($i = $startDateTimeStamp; $i <= $endDateTimeStamp; $i+=$oneDay) {
+	       foreach($holidays as $holiday){
+		 $holidayDate = $holiday->holiday_date;
+		 $holiday_time_stamp=strtotime($holidayDate);
+   
+		 if($startDateTimeStamp<=$holiday_time_stamp){
+		     $totalHolidays[] = date('Y-m-d', $holiday_time_stamp);
+		 }
+		 $i += count($totalHolidays) * $oneDay;
+	       }
+	   }
+	 }
+       //echo '<pre>';print_r(array_unique($totalHolidays));die;
+       return array_unique($totalHolidays);
+    }
+    
+    /**
+    * Convert a multi-dimensional array into a single-dimensional array.
+    * @author Sean Cannon, LitmusBox.com | seanc@litmusbox.com
+    * @param  array $array The multi-dimensional array.
+    * @return array
+    */
+    function array_flatten($array) { 
+	if (!is_array($array)) { 
+	    return false; 
+	} 
+	$result = array(); 
+	foreach ($array as $key => $value) { 
+	    if (is_array($value)) { 
+		$result = array_merge($result, array_flatten($value)); 
+	    } else { 
+		$result[$key] = $value; 
+	    } 
+	} 
+	return $result; 
+    }
+    
+}

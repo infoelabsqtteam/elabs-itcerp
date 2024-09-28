@@ -1,0 +1,9 @@
+name,email,division_code,department_code,password,is_sales_person
+Employee1,employee1@gmail.com,CHD,DEPT001,123456,yes
+Employee2,employee2@gmail.com,PKL2,DEPT0023,123456,no
+Employee3,employee3@gmail.com,CHD,DEPT003,123456,yes
+Employee4,employee4@gmail.com,CHD,DEPT004,123456,yes
+Employee2,employee5@gmail.com,PKL2,DEPT005,123456,no
+Employee3,employee3@gmail.com,PKL,DEPT006,123456,yes
+Employee6,drish.emp@itclab.com,PKL,DEPT007,123456,yes
+Employee1,employee1@gmail.com,CHD,DEPT001,123456,yes

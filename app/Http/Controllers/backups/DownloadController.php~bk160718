@@ -1,0 +1,277 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+use App\Http\Requests;
+use App\Helpers\Helper;
+use Illuminate\Support\Facades\Redirect;
+use Auth;
+use DB;
+use Session;
+use Validator;
+use Route;
+use App\Company;
+use App\Order;
+use App\Models;
+use App\Report;
+use App\Setting;
+use App\ProductCategory;
+use App\InvoiceHdr;
+use App\InvoiceHdrDetail;
+use App\NumbersToWord;
+use App\SendMail;
+
+class DownloadController extends Controller
+{
+    /**
+    * protected Variable.
+    */
+    protected $auth;
+    
+    /**
+    * Create a new controller instance.
+    *
+    * @return void
+    */
+    public function __construct(){
+		
+        global $order,$report,$models,$invoice,$mail,$numbersToWord;
+	
+        $order   	= new Order();
+	$report 	= new Report();
+        $models  	= new Models();
+	$invoice 	= new invoiceHdr();
+	$numbersToWord  = new NumbersToWord();
+	$mail    	= new SendMail();
+        $this->middleware('auth');
+        $this->middleware(function ($request, $next) {
+            $this->auth = Auth::user();
+	    parent::__construct($this->auth);
+	    //Checking current request is allowed or not
+	    $allowedAction = array('index','navigation');
+	    $actionData    = explode('@',Route::currentRouteAction());
+	    $action        = !empty($actionData[1]) ? trim(strtolower($actionData[1])): '0';			
+	    if(defined('NOTALlOWEDTONAVIGATE') && empty(NOTALlOWEDTONAVIGATE) && in_array($action,$allowedAction)){
+		return redirect('dashboard')->withErrors('Permission Denied!');
+	    }
+            return $next($request);
+        });	
+    }
+    
+    /**
+    * generate Job Order PDF.
+    *
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function generateAnalyticalSheetIPdf(Request $request){
+		
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+	
+        if($request->isMethod('post') && !empty($request->order_id) && !empty($request->downloadType) && !empty($request->generate_analytical_sheet_I_pdf)){
+	    return $models->downloadPDF($request->all(),$contentType='order');
+	}else{
+	    $message = config('messages.message.fileDownloadErrorMsg');
+	    return redirect('dashboard')->with('errorMsg',$message);
+	}
+    }
+    
+    /**
+    * generate Job Order PDF.
+    *
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function generateAnalyticalSheetIIPdf(Request $request){
+		
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+	
+        if($request->isMethod('post') && !empty($request->order_id) && !empty($request->downloadType) && !empty($request->generate_analytical_sheet_II_pdf)){
+	    return $models->downloadPDF($request->all(),$contentType='jobSheet');
+	}else{
+	    $message = config('messages.message.fileDownloadErrorMsg');
+	    return redirect('dashboard')->with('errorMsg',$message);
+	}
+    }
+    
+    /**
+    * generate Job Order PDF.
+    *
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function generateReportPdf(Request $request){
+	
+	global $order,$report,$models,$invoice,$mail,$numbersToWord;
+	
+	if($request->isMethod('post') && !empty($request->order_id) && !empty($request->downloadType) && !empty($request->generate_report_pdf)){
+	    
+	    $currentDateTime = !defined('CURRENTDATETIME') ? CURRENTDATETIME : date('Y-m-d H:i:s');
+	    $currentDateTime = !empty($request->back_report_date) ? $models->getFormatedDateTime($request->back_report_date) : $currentDateTime;
+	    
+	    //updating Order Staus and Log
+	    list($currentOrderStage,$nextOrderStage) = $report->getOrderStageWithOrWithoutAmendment($request->order_id);
+	    
+	    if(!empty($currentOrderStage) && !empty($nextOrderStage)){
+		$report->updateReportApprovingDate($request->order_id,$currentDateTime);
+		$order->updateOrderStausLog($request->order_id,$currentOrderStage,$currentDateTime);
+		$order->updateOrderStatusToNextPhase($request->order_id,$nextOrderStage,$currentDateTime);
+	    }
+	    return $models->downloadSaveMailPDF($request->all(),$contentType='report');
+	}else{
+	    $message = config('messages.message.fileDownloadErrorMsg');
+	    return redirect('dashboard')->with('errorMsg',$message);
+	}
+    }
+    
+    /**
+    * generate Job Order PDF.
+    *
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function generateInvoicePdf(Request $request){
+	
+	global $order,$models,$invoice,$mail,$numbersToWord;
+	
+        if($request->isMethod('post') && !empty($request->invoice_id) && !empty($request->downloadType) && !empty($request->generate_invoice_pdf)){
+	    return $models->downloadSaveMailPDF($request->all(),$contentType='invoice');
+	}else{
+	    $message = config('messages.message.fileDownloadErrorMsg');
+	    return redirect('dashboard')->with('errorMsg',$message);
+	}
+    }
+	
+    /************************************
+     * Description : Download customers excel
+     * Date        : 29-01-18
+     * Parameter   : 
+     * @return     : \Illuminate\Http\Response
+     ************************************/
+    public function generateCustomerMasterDocuments(Request $request){
+    
+	global $models;
+
+	$responseData = $filterData = array();
+	$filterData = $request->all();
+	$customers = DB::table('customer_master')
+	    ->leftJoin('order_sample_priority','order_sample_priority.sample_priority_id','=','customer_master.customer_priority_id')
+	    ->join('customer_invoicing_types','customer_invoicing_types.invoicing_type_id','=','customer_master.invoicing_type_id')
+	    ->join('countries_db','countries_db.country_id','=','customer_master.customer_country')
+	    ->join('state_db','state_db.state_id','=','customer_master.customer_state')
+	    ->join('city_db','city_db.city_id','=','customer_master.customer_city')
+	    ->join('customer_billing_types','customer_master.billing_type','=','customer_billing_types.billing_type_id')
+	    ->join('users','customer_master.sale_executive','=','users.id')
+	    ->join('users as u','customer_master.created_by', '=', 'u.id')
+	    ->select('customer_master.customer_code','customer_master.customer_name','customer_master.customer_address','customer_master.customer_email','customer_master.customer_mobile','customer_master.customer_phone','countries_db.country_name as customer_country','state_db.state_name as customer_state','city_db.city_name as customer_city','customer_master.customer_pincode','customer_master.customer_vat_cst','customer_billing_types.billing_type as billing_type','order_sample_priority.sample_priority_name as customer_priority_type','customer_invoicing_types.invoicing_type','customer_master.mfg_lic_no','customer_master.customer_pan_no','customer_master.customer_tan_no','customer_master.customer_gst_no','customer_master.bank_account_no','customer_master.bank_account_name','customer_master.bank_name','customer_master.bank_branch_name','customer_master.bank_rtgs_ifsc_code','u.name as created_by')
+	    ->orderBy('customer_id','ASC')
+	    ->get();
+	    
+	$customersList          		= !empty($customers) ? json_decode(json_encode($customers),true) : array();
+	$filterData['heading'] 			= 'All Customers List :'.'('.count($customers).')';
+	$filterData['mis_report_name'] 		= 'Customers List';
+	$responseData['tableHead'] 		= !empty($customersList) ? array_keys(end($customersList)) : array();
+	$responseData['tableBody'] 		= !empty($customersList) ? $customersList : array();
+
+	if(!empty($request->generate_customer_documents) && strtolower($request->generate_customer_documents) == 'excel'){
+		return $models->downloadExcel($responseData,$filterData);
+	}else{
+		return redirect('dashboard')->withErrors('Permission Denied!');
+	}
+    }
+    
+    /************************************
+     * Description : Download parameter excel
+     * Date        : 30-01-18
+     * Parameter   : 
+     * @return     : \Illuminate\Http\Response
+     ************************************/
+    public function generateParameterMasterDocuments(Request $request){
+	
+	global $models;
+	
+	$returnData = array();
+	
+	if(!empty($request->generate_parameter_documents) && $request->generate_parameter_documents == 'Excel'){
+	 
+	    $allParametersList = DB::table('test_parameter')
+				    ->join('test_parameter_categories','test_parameter.test_parameter_category_id','test_parameter_categories.test_para_cat_id')
+				    ->join('product_categories','test_parameter_categories.product_category_id','product_categories.p_category_id')
+				    ->join('users as createdBy','test_parameter.created_by', '=', 'createdBy.id')
+				    ->leftJoin('test_parameter_equipment_types','test_parameter.test_parameter_id','test_parameter_equipment_types.test_parameter_id')
+				    ->leftJoin('equipment_type','test_parameter_equipment_types.equipment_type_id','equipment_type.equipment_id')
+				    ->select('product_categories.p_category_name as department','test_parameter_categories.test_para_cat_name as test_parameter_category','test_parameter.test_parameter_name','equipment_type.equipment_name','test_parameter.cost_price','test_parameter.selling_price','createdBy.name as created_by')
+				    ->orderBy('product_categories.p_category_id','ASC')
+				    ->orderBy('test_parameter.test_parameter_name','ASC')
+				    ->orderBy('test_parameter.test_parameter_id','ASC')
+				    ->get(); 
+	    
+	    //Changing Date Time Format
+	    $models->formatTimeStampFromArrayExcel($allParametersList,DATEFORMATEXCEL);
+	    
+	    $allParametersList  		= !empty($allParametersList) ? json_decode(json_encode($allParametersList),true) : array();
+	    $allParametersList 			= $models->unsetFormDataVariablesArray($allParametersList,array('canDispatchOrder'));	    
+	    $filterData['heading'] 		= 'All Parameters List('.count($allParametersList).')';
+	    $filterData['mis_report_name'] 	= 'parameters_list_';
+	    $responseData['tableHead'] 		= !empty($allParametersList) ? array_keys(end($allParametersList)) : array();
+	    $responseData['tableBody'] 		= !empty($allParametersList) ? $allParametersList : array();
+	    
+	    return $models->downloadExcel($responseData,$filterData);
+	}else{
+	    return redirect()->back()->withErrors('Error in generating!');
+	}
+    }
+	
+    /************************************
+     * Description : Download product test excel
+     * Date        : 30-01-18
+     * Parameter   : 
+     * @return     : \Illuminate\Http\Response
+     ************************************/
+    public function generateTestMasterDocuments(Request $request){
+	
+	global $order,$models,$invoice,$mail,$numbersToWord;
+	
+	$pdfHeaderContent = $models->getHeaderFooterTemplate();
+	
+	$testParametersObj = DB::table('product_test_dtl')
+			    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+			    ->join('product_master','product_master.product_id','product_test_hdr.product_id')
+			    ->join('test_standard','test_standard.test_std_id','product_test_hdr.test_standard_id')
+			    ->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+			    ->join('test_parameter_categories','test_parameter.test_parameter_category_id','test_parameter_categories.test_para_cat_id')
+			    ->leftjoin('equipment_type','product_test_dtl.equipment_type_id','equipment_type.equipment_id')
+			    ->leftjoin('method_master','product_test_dtl.method_id','method_master.method_id')
+			    ->join('users','product_test_dtl.created_by','users.id')
+			    ->select('product_test_hdr.test_code','product_master.product_name','test_standard.test_std_name','product_test_hdr.wef','product_test_hdr.upto','test_parameter.test_parameter_name as test_parameter','test_parameter_categories.test_para_cat_name as test_parameter_category','equipment_type.equipment_name as equipment','method_master.method_name as method','product_test_dtl.standard_value_from','product_test_dtl.standard_value_to','users.name as created_by', 'product_test_hdr.created_at as created_on');
+			
+	if(!empty($request->test_id)){
+	    $test_id = !empty($request->test_id) ? $request->test_id  :  '0';
+	    $testParametersObj->where('product_test_dtl.test_id',$test_id);	
+	}
+		
+	$testProducts	= $testParametersObj->orderBy('test_parameter_categories.test_para_cat_name','ASC')->get();
+	$models->formatTimeStampFromArrayExcel($testProducts,DATEFORMATEXCEL);
+			
+	$testProductsList          			= !empty($testProducts) ? json_decode(json_encode($testProducts),true) : array();
+	$testProductsList 				= $models->unsetFormDataVariablesArray($testProductsList,array('canDispatchOrder'));	    
+	$responseData['heading'] 			= 'Test Product List :'.'('.count($testProductsList).')';
+	$responseData['mis_report_name'] 		= 'Test Product List';
+	$responseData['tableHead'] 			= !empty($testProductsList) ? array_keys(end($testProductsList)) : array();
+	$responseData['tableBody'] 			= !empty($testProductsList) ? $testProductsList : array();
+	//echo'<pre>'; print_r($responseData);die;
+
+	if(!empty($request->generate_product_test_documents) && $request->generate_product_test_documents == 'PDF'){
+	    $responseData['header_content']	= $pdfHeaderContent->header_content;
+	    $responseData['footer_content']	= $pdfHeaderContent->footer_content;
+	    return $models->downloadPDF($responseData,$contentType='product_test');
+	}else if(!empty($request->generate_product_test_documents) && $request->generate_product_test_documents == 'Excel'){
+	    return $models->generateExcel($responseData);
+	}else{
+	    return redirect('dashboard')->withErrors('Permission Denied!');
+	}  
+    }
+    
+}

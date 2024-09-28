@@ -1,0 +1,475 @@
+/* ***************************** plugin  css ****************************** */
+.container-fluid {
+    width: 100%;
+}
+.topmargin_40{
+	margin-top:40px;
+	}
+.pad_0{
+	padding:0;
+	}
+.row1{
+	background:#f1f1f1;
+	}
+#main_plugin {
+    float: left;
+    width: 100%;
+    border-top:3px solid #ccc;
+    max-height: 240px;
+    height: 240px;
+    position: fixed;
+    bottom: 0;
+}
+.top_header {
+    height: 35px;
+    background: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+}
+.row1 .toggle_btn {
+    font-size: 20px;
+    cursor: pointer;
+    display: block;
+    float: left;
+    width: 16.67%;
+    border-bottom: 1px solid #ccc;
+	padding:6px 0px 6px 15px;
+}
+.top-blankdiv {
+    width: calc(100% - 33.34%);
+    background: white;
+    float: left;
+    height: 31px;
+    margin-top: 10px;
+    position: relative;
+    z-index: 1;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    border-bottom: 0px solid;
+}
+.big_image img {
+    max-height: 200px;
+    width: 100%;
+    margin-bottom: 0!important;
+    min-height: 200px;
+	}
+.gallery_main{
+	margin-top: -20px;
+    position: relative;
+    z-index: 999;
+	}
+.bulk_gallery{
+	height: 204px;
+	overflow: hidden;
+	overflow-y: scroll;
+	padding: 0;
+	}
+.row1> span >b{
+	font-size:20px;
+	margin:0 15px;
+	}
+.right_buttons button{
+	width:100%;
+	margin:5px 0;
+	}
+.plugin_toggle{
+	float: left;
+    width: 16.67%;
+	border-bottom:1px solid #ccc;
+	}
+.plugin_toggle p{
+	width:calc(100% - 75px);
+	text-align:right;
+	}
+.plugin_toggle a.btn {
+	float: right;
+	margin-right: 10px;
+	margin-top: 6px;
+	}
+.plugin_toggle p{
+	float:left;
+	margin:10px;
+	}
+.bulk_gallery img {
+    height: 97px!important;
+    margin: 0!important;
+    width: 100%!important;
+}
+.bulk_gallery .col-lg-4.col-sm-6.col-xs-4 {
+    padding: 0px 3px 6px;
+}
+/* ***************************** plugin  css end ****************************** */
+/* ***************************** fieldset  css ****************************** */
+	fieldset.scheduler-border {
+    border: 1px groove #ddd !important;
+    padding: 0 1em 1em 1em !important;
+    margin: 0 0 1.5em 0 !important;
+    -webkit-box-shadow: 0px 0px 0px 0px #000;
+    box-shadow: 0px 0px 0px 0px #000;
+}
+legend.scheduler-border {
+    font-size: 1.2em !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    width: auto;
+    padding: 0 10px;
+    border-bottom: none;
+}
+#my-form{margin-top:10px;}
+#my-form input[type="checkbox"]{    box-shadow: 0px 0px 0px!important;
+    border: 0px solid;
+    outline: 0px!important;    height: 20px!important;}
+.pad{padding:0px;}
+.fb_icon,.twitter_icon,.linkedin_icon{    display: inline-block;
+    position: relative;
+    margin: 10px auto 10px auto;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    border-radius: 50%;
+    text-align: center;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    background: #044786;
+    color: white;}
+.fb_icon i{    margin: 0;
+    line-height: 30px;
+    text-align: center;}
+	.font-16{font-size:12px;}
+	.flex_align{display:flex;
+	align-items:center;}
+.big_fieldset fieldset.scheduler-border legend {
+    margin-bottom: 0;
+}
+.big_fieldset fieldset.scheduler-border {
+    margin-bottom: 10px!important;
+    padding: 10px!important;
+}
+.botm_email {
+    border: 1px solid #777;
+    padding: 5px;
+	font-size:13px;
+}
+/* ***************************** fieldset  css ****************************** */
+
+/* ***************************** Treeview  css ****************************** */
+.tree{
+    margin: 0em;
+	position:relative;
+    float: left;
+    width: 100%;
+}
+ul.tree ul {
+    margin-left: 1em;
+}
+.tree ul:after {
+    content:"";
+    display:block;
+    width:0;
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    border-left:1px solid;
+}
+.tree li {
+    padding:0 1em;
+    line-height:.2em;
+    color:#777;
+    font-weight:700;
+    position:relative;
+	margin: 5px auto 10px;
+    display: grid;
+}
+ .tree ul li:after {
+    content:"";
+    display:block;
+    width:10px;
+    height:0;
+    border-top:1px solid #777;
+    margin-top:-4px;
+    position:absolute;
+    top:1em;
+    left:0;
+}
+.tree label i{
+	position: absolute;
+	z-index: 9;
+	right: 39px;
+	top: 9px;
+	}
+.icon_down{    
+	transform: rotate(90deg);
+    top: -21px;
+    right: -23px;
+	}
+.tree a {
+    color: #777;
+}
+/* ***************************** Treeview  css  end ****************************** */
+/* ***************************** sidebar  css ****************************** */
+.sidenav {
+      height: 240px;
+    width:0;
+    position: fixed;
+    z-index: 99999999!important;
+    bottom: 0;
+    left: -11px;
+    background-color: #fff;
+    overflow-x: hidden;
+transition: 0.5s;
+border:5px solid #767676;
+ -webkit-transition: all 2s ease;
+    -moz-transition: all 2s ease;
+    -o-transition: all 2s ease;
+    transition: all 2s ease;
+}
+.sidenav span{
+	font-size:20px;
+	cursor:pointer;
+	display: block;
+	background: #f1f1f1;
+	border-bottom: 1px solid #ccc;
+	padding:5px 0px 5px 15px;
+	}
+
+.sidenav a {
+    padding: 6px 4px 6px 20px;
+    text-decoration: none;
+    font-size: 14px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+	
+}
+.sidenav b{margin:0 15px;}
+.sidenav a:hover, .offcanvas a:focus{
+    color: #5aa1de;;
+}
+.sidenav hr{margin:0px;}
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+/* ***************************** sidebar  css  end ****************************** */
+
+/* ***************************** drag-drop  ****************************** */
+
+ #sortable { list-style-type: none; margin: 0; padding: 0; width:100%; }
+  
+  
+
+.ui-draggable, .ui-droppable {
+	background-position: top;
+}
+.ui-state-default img{width:100%;}
+.bulk_gallery .ui-state-default{background:transparent!important;
+border:0px solid!important;}
+/* *****************************  drag-drop   end ****************************** */
+/* *****************************  modal css ****************************** */
+/*#fb_emaillisting,#social-modal,#myModal,.modal-backdrop{position:absolute;}*/
+		#myModal .modal-body{padding-bottom:0px;}
+		#myModal .modal-dialog {
+			margin: 10px auto!IMPORTANT;
+		}
+		.stitch-name {
+			width: 50%;
+			margin: 10px auto;
+			position: relative;
+		}
+		.stitch-name:after {
+			  content: '';
+			height: 27px;
+			width: 2px;
+			background: #333;
+			position: absolute;
+			left: 14px;
+		}
+		#myModal .modal-body input,#myModal .modal-body textarea  {
+			border-color: #333;
+			color: #333;
+			padding: 5px 9px;
+			text-align: center;
+		}
+		.stitch-thread {
+			width: 37%;
+			margin: 10px auto;
+			position: relative;
+		}
+		.stitch-thread:before {
+			content: '';
+			width: 21px;
+			height: 2px;
+			background: #333;
+			float: left;
+			position: absolute;
+			left: -21px;
+			top: 15px;
+		}
+		#myModal .modal-footer p{
+			position: absolute;
+			top: 22px;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			    font-size: 16px;
+		}
+		.socialicon-list .fb_icon,.socialicon-list .twitter_icon,.socialicon-list .linkedin_icon {
+			height: 25px;
+			width: 25px;
+			font-size: 13px;
+			margin: 3px!important;
+			opacity:0.5;
+		}	
+.socialicon-list .fb_icon i{line-height:25px!important;}
+.social-icons{
+    margin: auto;
+    width: auto;
+    display: table;
+}
+.socialicon-list {
+    display: inline-block;
+}
+ .twitter_icon{background: #00adf2;}
+ .linkedin_icon{background: #0b69c1;}
+.socialicon-list a.fb_icon:hover{opacity:1;color:white!important;}
+#fb_emaillisting ul li{list-style:none;}
+.fb_emaillist span {
+    margin: 0 20px;
+}
+.fb_emaillist {
+    max-height: 90px;
+    overflow: hidden;
+    overflow-y: scroll;
+}
+.fb_emaillist li div {
+    margin: 6px;
+}
+.fb_emaillist a {
+    text-decoration: none;
+    color: #333;
+    /* font-weight: bold; */
+    font-size: 16px;
+}
+.stitch-comment {
+    width: 70%;
+    margin: auto;
+}
+.modal_btn {
+    display: inline-block;
+    width: 100%;
+}
+/* *****************************  modal css end ****************************** */
+
+/* ***************************** media  css  ****************************** */
+@media screen and (max-width:990px){
+	.tree label i {
+    right: 22px;
+}
+	.flex_align{display:block;}
+.toggle_btn a.btn {
+    margin-right: 10px;
+}	
+.gallery_main{margin-top:-10px;}
+}
+@media screen and (max-width:767px){
+
+	#main_plugin{overflow-y:scroll;}
+	.row1{position:fixed!important;
+	width:100%!important;
+	z-index:99;}
+	.row2 {
+    margin-top: 60px;
+    position: relative;
+    z-index: 9;
+}
+	.toggle_btn,.plugin_toggle{width:50%!important;}
+	.top-blankdiv{display:none;}
+	.gallery_main{
+	margin-top: initial;
+    position: relative;
+    z-index: 999;
+	}
+	.bulk_gallery img {
+    max-height: auto;
+   }  
+   .ptitle{font-size:14px;}
+   .pprice{font-size:12px;}
+}
+
+.report {
+    margin: 3px 0;
+    font-weight: 600;
+}
+
+.pdng-20{padding:0 20px;}
+address {
+    margin: 7px 0;
+}
+.botm-table .bord{padding-top: 6px;
+    padding-bottom: 6px;
+    border: 1px solid #000;
+  }
+  .upr-case {
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 12px;
+}
+.upr-case span {
+    margin-right: 10px;
+}
+.note {
+    font-size: 12px;
+    margin: 20px 0;
+	font-weight:normal!important;
+}
+.note ol{margin:0;padding:0px;}
+.centertxt, .centertxt h3, .centertxt h5 {
+    color: #0c73b1;
+    font-family: "sans-serif!important";
+    font-weight: bold;
+}
+.logo img{margin:auto;}
+.dis_flex{display:flex;}
+.bord-left{border-left:1px solid ;}
+
+
+/* ************************ 20170717 ******************** */
+.f_weight{font-weight:normal!important;}
+.order_botm-row{margin:30px 0 50px;}
+.order_botm-row h5{font-weight:600;}
+.f_weight span {
+    font-weight: 600;
+}
+.report .col-sm-9{
+    font-weight: normal;
+}
+.width_20 img {
+    margin: 8px auto;
+    width: 90%;
+}
+.width_20{width:20%;float:left;}
+.width_60{width:60%;float:left;}
+
+@media screen and (max-width:767px)
+{.dis_flex{display:block;}
+.width_20,.width_60{width:100%;}
+}	
+/* ************ 20170808 ************ */
+.t_c_invoice li{font-size:12px;}
+.top_1 {
+    border: 1px solid;
+    width: 220px!important;
+    padding: 8px;
+    margin: 10px auto;
+    text-align: center;
+	font-weight:600;
+}
+.small {font-size: 9px !important;}

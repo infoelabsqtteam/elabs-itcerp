@@ -1,0 +1,13 @@
+branch,department,customer_code,type,employee_code,date,amount
+Panchkula,Food,Cust101,Budget,AjaiSharma399,23/11/2020,25000
+Panchkula,Food,Cust101,Budget,AjaiSharma399,24/11/2020,35000
+Panchkula,Food,Cust101,Budget,AjaiSharma399,25/11/2020,45000
+Panchkula,Food,Cust101,Forecast,AjaiSharma399,26/11/2020,2000
+Panchkula,Food,Cust101,Forecast,AjaiSharma399,27/11/2020,35000
+Panchkula,Food,Cust101,Forecast,AjaiSharma399,28/11/2020,40000
+Panchkula,Cosmetics,Cust101,Budget,AjaiSharma399,29/11/2020,50000
+Panchkula,Cosmetics,Cust101,Budget,AjaiSharma399,30/11/2020,65000
+Panchkula,Cosmetics,Cust101,Budget,AjaiSharma399,01/12/2020,100000
+Panchkula,Cosmetics,Cust101,Forecast,AjaiSharma399,02/12/2020,45000
+Panchkula,Cosmetics,Cust101,Forecast,AjaiSharma399,03/12/2020,55000
+Panchkula,Cosmetics,Cust101,Forecast,AjaiSharma399,04/12/2020,9000000

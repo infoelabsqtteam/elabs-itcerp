@@ -1,0 +1,123 @@
+<form method="POST" role="form" id="erpSaveTestParamResultReportForm" name="erpSaveTestParamResultReportForm" novalidate>	
+	<!-- part C div start here -->
+	<div class="container-fluid pdng-20 botm-table" id="foorPartC" >
+		<div class="col-md-12 col-xs-12 botm-row mrgn_20 dis_flex" style="padding:0">
+			<div class="col-md-12 col-xs-12 bord">
+				<div class="col-sm-12 col-xs-12 report"><div class="col-sm-11  col-xs-10 upr-case"> particulars of sample submitted </div></div>
+			</div>
+		</div>
+		<div class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+			<div class="col-md-1 col-xs-1 bord">S.No</div>
+			<div class="col-md-3 col-xs-3 bord">Test Parameter</div>
+			<div class="col-md-2 col-xs-2 bord hidden">Inst. Used</div>
+			<div class="col-md-2 col-xs-2 bord">Method</div>
+			<div class="col-md-4 col-xs-4 bord">Requirement</div>
+			<div class="col-md-2 col-xs-2 bord">Result</div>
+		</div>
+
+		<div ng-repeat="categoryParameters in orderParametersList">
+			<div class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+				<div class="col-md-1 col-xs-1 bord"><b>[[$index+1]]</b></div>
+					<div class="col-md-11 col-xs-11 bord ">
+						<div class="col-sm-12 col-xs-12"><div class="col-sm-12 col-xs-12  text-left"><b>[[categoryParameters.categoryName ]]</b></div></div>
+					</div>
+			</div>
+			<div ng-if = "categoryParameters.categoryName == 'description' || categoryParameters.categoryName == 'Description'"  ng-repeat="subCategoryParameters in categoryParameters.categoryParams track by $index">
+				<div class="col-md-12 col-xs-12 botm-row dis_flex" style="padding:0">
+					<div class="col-md-1 col-xs-1 bord text-center">[[subCategoryParameters.charNumber]])</div>
+					<div class="col-md-3 col-xs-3 bord text-left">
+						<span ng-if="subCategoryParameters.test_parameter_name" ng-bind-html="subCategoryParameters.test_parameter_name"></span>
+						<span ng-if="!subCategoryParameters.test_parameter_name"><span>
+					</div>
+					<div class="col-md-8 col-xs-8 bord text-justify">
+						<input type="text"
+							class="form-control [[subCategoryParameters.errorClass]]"
+							id="test_result[[subCategoryParameters.analysis_id]]"
+							name="test_result['[[subCategoryParameters.analysis_id]]']"
+							placeholder="enter test result"
+							value="[[subCategoryParameters.description ? subCategoryParameters.description : '']]">
+						<span ng-if="subCategoryParameters.errorMessage" role="alert">
+							<span class="error" ng-bind-html="subCategoryParameters.errorMessage"></span>
+						</span>
+					</div>
+				</div>
+			</div>
+			<div ng-if = "categoryParameters.categoryName != 'description' && categoryParameters.categoryName != 'Description'" ng-repeat="subCategoryParameters in categoryParameters.categoryParams track by $index">
+				<div class="col-md-12 col-xs-12 botm-row dis_flex" style="padding:0">
+					<div class="col-md-1 col-xs-1 bord text-center">[[subCategoryParameters.charNumber]])</div>
+					<div class="col-md-3 col-xs-3 bord text-left">
+						<span ng-if="subCategoryParameters.test_parameter_name" ng-bind-html="subCategoryParameters.test_parameter_name"></span>
+						<span ng-if="!subCategoryParameters.test_parameter_name"><span>
+					</div>
+					<div class="col-md-2 col-xs-2 bord hidden text-center">
+						<span ng-if="subCategoryParameters.equipment_name">[[subCategoryParameters.equipment_name]]</span>
+						<span ng-if="!subCategoryParameters.equipment_name"><span>
+					</div>
+					<div class="col-md-2 col-xs-2 bord text-center">
+						<span ng-if="subCategoryParameters.method_name">[[subCategoryParameters.method_name]]</span>
+						<span ng-if="!subCategoryParameters.method_name"><span>
+					</div>
+					<div class="col-md-4 col-xs-4 bord text-left">[[subCategoryParameters.requirement_from_to]]</div>
+					<div class="col-md-2 col-xs-2 bord text-left">					
+						@if(empty($equipment_type_ids))							
+							<div>
+								<input type="text"
+								   class="form-control [[subCategoryParameters.errorClass]]"
+								   id="test_result[[subCategoryParameters.analysis_id]]"
+								   name="test_result['[[subCategoryParameters.analysis_id]]']"
+								   placeholder="enter test result"
+								   value="[[subCategoryParameters.test_result ? subCategoryParameters.test_result : '']]">
+								<span ng-if="subCategoryParameters.errorMessage" role="alert">
+									<span class="error" ng-bind-html="subCategoryParameters.errorMessage"></span>
+								</span>
+							</div>
+						@else                                                        
+							<div ng-if="[[subCategoryParameters.has_employee_equipment_type]] == 1">
+								<input type="text"                                                               
+								   class="form-control [[subCategoryParameters.errorClass]]" id="test_result[[subCategoryParameters.analysis_id]]"
+								   name="test_result['[[subCategoryParameters.analysis_id]]']"
+								   placeholder="enter test result"
+								   value="[[subCategoryParameters.test_result ? subCategoryParameters.test_result : '']]">
+								<span ng-if="subCategoryParameters.errorMessage" role="alert">
+									<span class="error" ng-bind-html="subCategoryParameters.errorMessage"></span>
+								</span>
+							</div>
+							<span ng-if="[[subCategoryParameters.has_employee_equipment_type]] == 0"></span>
+						@endif
+					</div>
+				</div>
+			</div>
+		</div>
+   </div>
+   <!-- /part C div end here -->
+   
+   <!-- part D div start here -->
+   <div class="container-fluid pdng-20 botm-table " id="foorPartD">
+      	
+		<div class="col-md-12 col-xs-12 botm-row  bord" style="padding:0">
+		
+			<!--<div class="report-note alert-danger col-md-12 col-xs-12 mrgn_20 mT20 mB20" ng-if="addOrderReport.note.length">
+				<div class="col-sm-1 col-xs-4 uprcase">NOTE:</div>
+				<div class="col-sm-10 col-xs-8">
+				     <span ng-if="addOrderReport.note" ng-bind-html="addOrderReport.note"></span>
+				</div>
+			</div>-->
+			
+			<!--Save Button-->   
+			<div class="col-md-12 col-xs-12">
+				<div class=" col-sm-12 col-xs-12 text-center mrgn_20 mT10 mB10">
+					<span ng-if="addOrderReport.status == 3">
+						<label for="submit">{{ csrf_field() }}</label>
+						<input type="hidden" id="test_performed_by" ng-model="report.test_performed_by" name="test_performed_by" ng-value="{{$user_id}}">
+						<input type="hidden" id="order_id" ng-model="report.order_id" name="order_id" ng-value="addOrderReport.order_id">
+						<button type="submit" class="btn btn-primary" ng-click="funSaveTestParametersResultByTester(divisionID)">Save</button>
+					</span>
+					<button type="button" class="btn btn-primary" ng-click="backButton()">Back</button>
+					<h6 class="pull-right text-info">Note:&nbsp;For EIC Report, add Level of recovery(LOR) in format RESULT | LOR</h6>
+				</div>
+			</div>
+			<!--Save Button-->
+		</div>
+	</div>
+</form>
+	

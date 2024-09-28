@@ -1,0 +1,7 @@
+test_para_cat_name*,test_para_cat_print_desc,parameter_parent_category,product_category_id*
+parameter_cat_1,parameter_cat_desc_1,Heavy Metals,food
+parameter_cat_2,parameter_cat_desc_2,,pharma
+parameter_cat_3,parameter_cat_desc_3,,ayurvedic
+parameter_cat_4,parameter_cat_desc_4,,helmet
+parameter_cat_5,parameter_cat_desc_5,Heavy Metals,food
+parameter_cat_6,parameter_cat_desc_6,Chemical Parameters,food

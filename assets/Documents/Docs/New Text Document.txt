@@ -1,0 +1,5 @@
+SELECT order_report_details.order_report_id,order_report_details.report_id,order_report_details.nabl_multi_location_lab_value,order_report_details.nabl_no,order_master.division_id FROM `order_report_details` INNER JOIN order_master ON order_master.order_id = order_report_details.report_id WHERE order_report_details.nabl_no IS  NOT NULL and order_master.division_id = 2;
+
+
+
+

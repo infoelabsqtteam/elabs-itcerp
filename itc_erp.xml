@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FileZilla3 version="3.20.1" platform="windows">
+	<Servers>
+		<Server>
+			<Host>116.193.163.101</Host>
+			<Port>21</Port>
+			<Protocol>0</Protocol>
+			<Type>0</Type>
+			<User>itcerp</User>
+			<Pass encoding="base64">ZHJpMTIz</Pass>
+			<Logontype>1</Logontype>
+			<TimezoneOffset>0</TimezoneOffset>
+			<PasvMode>MODE_DEFAULT</PasvMode>
+			<MaximumMultipleConnections>0</MaximumMultipleConnections>
+			<EncodingType>Auto</EncodingType>
+			<BypassProxy>0</BypassProxy>
+			<Name>itc_erp</Name>
+			<Comments />
+			<Colour>0</Colour>
+			<LocalDir />
+			<RemoteDir />
+			<SyncBrowsing>0</SyncBrowsing>
+			<DirectoryComparison>0</DirectoryComparison>itc_erp</Server>
+	</Servers>
+</FileZilla3>

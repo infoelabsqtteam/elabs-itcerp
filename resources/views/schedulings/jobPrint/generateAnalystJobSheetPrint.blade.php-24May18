@@ -1,0 +1,89 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style>
+	*{padding: 0;font-family: sans-serif;font-size: 13px;}
+	.page-break {page-break-before: always;}
+	@page { margin: 120px 20px 20px; }
+	#header { position: fixed; left: 0px; top: -120px; right: 0px; width:100%; height: auto; text-align: center; }
+	#footer { position:  fixed;  left: 0px; bottom: 10px; right: 0px; width:100%; height:50px }
+	#footer .page:after { content: counter(page, upper-roman); }
+	#content{width:100%; left: 0px; bottom: 0px; right: 0px;}
+	.cntr_hdng h5,.cntr_hdng p {font-size: 13px;margin: 3px;font-weight: 700;color: #4d64a1;}
+	.side_cntnt {width: 20%;border: 0px!important;font-size: 12px!important;color: #4d64a1;}
+	.side_cntnt p {margin: 0;}
+	table tr td {border-bottom: 0 none !important;padding:2px !important;}
+	p{padding:0!important;margin:0!important;}
+    </style>  
+</head>
+<body>
+	<!--header-->
+	<div id="header">
+	    <table width="100%" style="margin:0 auto;border-collapse:collapse;">
+		<tr>
+		    <td width="10%" style="border: 0px none!important; vertical-align: top;"><img width="100px" src="{{url('/public/images/template_logo.png')}}"/></td>
+		    <td width="80%" class="cntr_hdng" style="border:0px!important;text-align:center!important">
+			<h3 style="font-size:2.1em;font-family:times of romen;font-weight:600;color:#4d64a1;margin:0">Interstellar Testing Centre Pvt. Ltd.</h3>
+			<h3 style="margin: 0; color:#4d64a1;" class="text-center">86, Industrial Area, Phase-1, Panchkula-134109 ( Haryana )</h3>
+			<p style="margin: 0;" class="text-center">Phone : ( O ) 0172-2561543, 2565825</p>
+			<p style="margin: 0;" class="text-center">Visit us : www.itclabs.com Email : customersupport@itclabs.com
+			</p>
+			<h4 style="margin-top: 10px; margin-bottom: 0px ! important;">{{!empty($heading) ? $heading.'-Analyst Sheet' : 'All Analyst Sheet'}}</h4>
+		    </td>
+		    <td width="10%" class="side_cntnt" style="border:0!important"></td>
+		</tr>
+	    </table>
+	</div>
+	<!--/header-->
+	
+	<!--content-->
+	<div id="content">
+	    <table width="100%" border="1" style="margin:0 auto;border-collapse:collapse;">
+		<thead>
+		    <tr>
+			<th align="center">S.No.</th>
+			<th align="center">Report Code</th>
+			<th align="center">Sample</th>
+			<th align="center">Parameter</th>
+			<th align="center">Equipment</th>
+			<th align="center">Method</th>
+			<th align="center">Expected Due Date</th>
+			<th align="center">Sample Priority</th>
+			<th align="center">Tentative Date</th>
+			<th align="center">Tentative Time</th>
+			<th align="center">Barcode</th>
+			@if(empty($heading))
+			<th align="center">Analyst</th>
+			@endif
+		    </tr>
+		</thead>
+		<tbody>
+		@if(!empty($viewData))
+		    <?php $pageBreakCounter = 1; $page = 1;?>
+		    @foreach($viewData as $key => $value)
+			<tr>
+			    <td align="center">{{$key + 1}}</td>
+			    <td align="center">{{!empty($value->order_no) ? $value->order_no : '-'}}</td>
+			    <td align="left">{{!empty($value->sample_description) ? $value->sample_description : '-'}}</td>
+			    <td align="left"><?php echo !empty($value->test_parameter_name) ? $value->test_parameter_name : '-';?></td>
+			    <td align="center">{{!empty($value->equipment_name) ? $value->equipment_name : '-'}}</td>
+			    <td align="center">{{!empty($value->method_name) ? $value->method_name : '-'}}</td>
+			    <td align="center">{{!empty($value->expected_due_date) ? $value->expected_due_date : '-'}}</td>
+				<td align="center">{{!empty($value->sample_priority) ? $value->sample_priority : '-'}}</td>
+			    <td align="center">{{!empty($value->tentative_date) ? $value->tentative_date : '-'}}</td>
+			    <td align="center">{{!empty($value->tentative_time) ? $value->tentative_time : '-'}}</td>
+			    <td align="center"><img width="" height="18px" src="{{!empty($value->barcode) ? $value->barcode : '-'}}"></td>
+			    @if(empty($heading))
+			    <td align="center">{{!empty($value->employee_name) ? $value->employee_name : '-'}}</td>
+			    @endif
+			</tr>
+			<?php $pageBreakCounter++;?>
+		    @endforeach
+		@endif
+		</tbody>
+	    </table>
+	</div>
+	<!--/content -->	
+</body>
+</html>
+<?php //die;?>

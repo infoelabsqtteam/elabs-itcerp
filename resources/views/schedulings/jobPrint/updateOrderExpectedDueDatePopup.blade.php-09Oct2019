@@ -1,0 +1,63 @@
+<div class="modal fade" data-backdrop="static" data-keyboard="false" id="updateOrderExpectedDueDatePopupWindow" tabindex="-1" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+	<!--If Order hasnot Customer Wise TAT defined-->
+	<div class="modal-dialog" ng-if="!updateOrderExpectedDueDate.tat_in_days">
+		<form method="POST" role="form" id="erpUpdateOrderExpectedDueDatePopupForm" name="erpUpdateOrderExpectedDueDatePopupForm" novalidate>	
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">&times;</button>
+					<h4 class="modal-title text-left">Order No. : <span ng-if="updateOrderExpectedDueDate.order_no" ng-bind="updateOrderExpectedDueDate.order_no"></span></h4>
+				</div>
+				<div class="modal-body" style="height: 80px;">	
+					
+					<!-- Dispatch date.-->
+					<div class="col-xs-6 form-group">
+						<label for="expected_due_date">Expected Due Date<em class="asteriskRed">*</em></label>
+						<div class="input-group date">
+							<input readonly
+								type="text"
+								id="expected_due_date_edit"
+								ng-model="updateOrderExpectedDueDate.expected_due_date"
+								ng-required="true"
+								name="expected_due_date"
+								class="form-control bgWhite"
+								placeholder="Dispatch Date">
+							<div class="input-group-addon">
+								<span class="glyphicon glyphicon-th"></span>
+								<script>$(function(){$('#expected_due_date_edit').datetimepicker({dateFormat: "dd-mm-yy" ,timeFormat: "hh:mm TT"});});</script>
+							</div>
+						</div>   
+						<span ng-messages="erpUpdateOrderExpectedDueDatePopupForm.expected_due_date.$error" ng-if="erpUpdateOrderExpectedDueDatePopupForm.expected_due_date.$dirty  || erpUpdateOrderExpectedDueDatePopupForm.$submitted" role="alert">
+							<span ng-message="required" class="error">Dispatch date is required</span>
+						</span>
+					</div>
+					<!-- /Dispatch date.-->
+				</div>
+				<div class="modal-footer">
+					<label for="submit">{{ csrf_field() }}</label>
+					<input type="hidden" ng-value="updateOrderExpectedDueDate.order_id" name="order_id" ng-model="updateOrderExpectedDueDate.order_id">
+					<input type="submit" ng-disabled="erpUpdateOrderExpectedDueDatePopupForm.$invalid" name="update_order_expected_duedate" value="Update" ng-click="funUpdateOrderExpectedDueDate()" class="btn btn-primary">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>						
+				</div>
+			</div>
+		</form>
+	</div>
+	<!--/If Order hasnot Customer Wise TAT defined-->
+	
+	<!--If Order has Customer Wise TAT defined-->
+	<div class="modal-dialog" ng-if="updateOrderExpectedDueDate.tat_in_days">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal">&times;</button>
+				<h4 class="modal-title text-left">Order No. : <span ng-if="updateOrderExpectedDueDate.order_no" ng-bind="updateOrderExpectedDueDate.order_no"></span></h4>
+			</div>
+			<div class="modal-body" style="height: 45px;">	
+				<div class="col-xs-12 form-group alert alert-info"><strong>Info! </strong>Expected Due Date cannot be edited as Order has Customer Wise TAT defined !</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>						
+			</div>
+		</div>
+	</div>
+	<!--If Order has Customer Wise TAT defined-->
+	
+</div>

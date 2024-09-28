@@ -1,0 +1,7 @@
+detector_name*,detector_desc,equipment_type_name*,product_section*
+method_name_1,method_decription_1,Microbiological,Food
+method_name_2,method_decription_2,Microbiological,Pharma
+method_name_3,method_decription_3,Chemically,Ayurvedic
+method_name_4,method_decription_4,Microbiological,Building
+method_name_5,method_decription_5,-,Food
+method_name_6,method_decription_6,Cmbinstrument,Food

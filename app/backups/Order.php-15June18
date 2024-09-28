@@ -1,0 +1,1665 @@
+<?php
+
+namespace App;
+
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+/**
+ * Third Party Service for user role ...
+ * URI https://github.com/httpoz/roles
+ */
+use HttpOz\Roles\Traits\HasRole;
+use HttpOz\Roles\Contracts\HasRole as HasRoleContract;
+use Illuminate\Database\Eloquent\Model;
+use DB;
+
+class Order extends Model
+{
+    protected $table = 'order_master';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'order_date', 'reference_no','sample_description','batch_no','mfg_date','expiry_date','batch_size','sample_qty','supplied_by','manufactured_by','barcode','pi_reference','customer_id','sale_executive','discount_type_id','discount_value','sample_priority_id','remarks','product_id','product_as_per_customer','test_standard','created_by'
+    ];
+    
+    /****************************************************
+    *Generating Order Number
+    *Format : DepartmentName-YYMMDDSERIALNo
+    *****************************************************/
+    function generateOrderNumber($submittedFormData){
+               			
+        if(!empty($submittedFormData['product_category_id'])){
+			
+	    $currentDay   = date('d');
+	    $currentMonth = date('m');
+	    $currentYear  = date('y');
+	    $orderDate    = $submittedFormData['order_date'];			
+	    $orderDay     = date('d',strtotime($orderDate));
+	    $orderMonth   = date('m',strtotime($orderDate));
+	    $orderYear    = date('Y',strtotime($orderDate));
+	    $orderDYear   = date('y',strtotime($orderDate));
+	    $divisionId   = $submittedFormData['division_id'];
+	    
+	    //Getting Section Name
+	    $divisionData    = DB::table('divisions')->where('divisions.division_id',$divisionId)->first();
+	    $divisionCode    = !empty($divisionData->division_code) ? trim($divisionData->division_code) : '00';
+	    $productTestData = DB::table('product_categories')->where('product_categories.p_category_id',$submittedFormData['product_category_id'])->first();
+	    $sectionName     = !empty($productTestData->p_category_name) ? substr($productTestData->p_category_name,0,1) : 'F';
+	    
+	    //In case of Pharma Deparment,order number will be generated according to current month and current day
+	    if($submittedFormData['product_category_id'] == '2'){
+		$maxOrderData = DB::table('order_master')->select('order_master.order_id','order_master.order_no')->where('order_master.product_category_id',$submittedFormData['product_category_id'])->whereDay('order_master.order_date',$orderDay)->whereMonth('order_master.order_date',$orderMonth)->whereYear('order_master.order_date',$orderYear)->where('order_master.division_id',$divisionId)->orderBy('order_master.order_id','DESC')->limit(1)->first();	
+	    }else{
+		$maxOrderData = DB::table('order_master')->select('order_master.order_id','order_master.order_no')->where('order_master.product_category_id',$submittedFormData['product_category_id'])->whereMonth('order_master.order_date',$orderMonth)->whereYear('order_master.order_date',$orderYear)->where('order_master.division_id',$divisionId)->orderBy('order_master.order_id','DESC')->limit(1)->first();	
+	    }
+	    
+	    //getting Max Serial Number					
+	    $maxSerialNo  = !empty($maxOrderData->order_no) ? substr($maxOrderData->order_no,10) + 1: '0001';
+	    $maxSerialNo  = $maxSerialNo != '9999' ? str_pad($maxSerialNo, 4, '0', STR_PAD_LEFT) : '0001';
+	    
+	    //Combing all to get unique order number
+	    $orderNumber = $sectionName.$divisionCode.'-'.$orderDYear.$orderMonth.$orderDay.$maxSerialNo;
+	    
+	    //Checking Order No exist in a DB or Not.If Yes,then regenerating the Order Number
+	    $ifOrderNoExist = DB::table('order_master')->select('order_master.order_id','order_master.order_no')->where('order_master.order_no',$orderNumber)->first();
+	    if(!empty($ifOrderNoExist->order_no)){
+		//getting Max Serial Number					
+		$maxSerialNo  = !empty($ifOrderNoExist->order_no) ? substr($ifOrderNoExist->order_no,10) + 1: '0001';
+		$maxSerialNo  = $maxSerialNo != '9999' ? str_pad($maxSerialNo, 4, '0', STR_PAD_LEFT) : '0001';
+		
+		//Combing all to get unique order number
+		$orderNumber = $sectionName.$divisionCode.'-'.$orderDYear.$orderMonth.$orderDay.$maxSerialNo;
+	    }
+	    
+	    //echo '<pre>';print_r($maxOrderData);die;            
+            return $orderNumber;
+        }
+        return false;
+    }
+
+    /*************************
+	 *Validate order date
+	 *Date that needs to be tested goes here
+	*************************/
+    function isValidDate($date){
+        list($dd,$mm,$yyyy) = explode('-',$date);
+        if (checkdate($mm,$dd,$yyyy)) {
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    /*************************
+     *function to get formated date
+     *Check date format
+    *************************/
+    function getFormatedDate($date,$format='Y-m-d'){
+	return date($format,strtotime($date));
+    }
+
+    /*************************
+     *function to get formated date and time
+     *Check date and time format
+    *************************/
+    function getFormatedDateTime($date,$format='Y-m-d'){
+	return date($format,strtotime($date)).' '.date("H:i:s");
+    }
+
+    /*************************
+     *function to get order
+     *related  all informations
+    *************************/
+    function getOrder($order_id){
+	
+	$orderList = DB::table('order_master')
+		->join('divisions','divisions.division_id','order_master.division_id')
+		->join('customer_master','customer_master.customer_id','order_master.customer_id')
+		->join('customer_contact_persons','customer_contact_persons.customer_id','customer_master.customer_id')
+		->join('customer_invoicing_types','customer_invoicing_types.invoicing_type_id','=','order_master.invoicing_type_id')
+		->join('customer_types','customer_types.type_id','customer_master.customer_type')
+		->join('customer_discount_types','customer_discount_types.discount_type_id','order_master.discount_type_id')
+		->join('users as sales','sales.id','order_master.sale_executive')
+		->join('users as createdBy','createdBy.id','order_master.created_by')
+		->join('product_master','product_master.product_id','order_master.product_id')
+		->join('product_test_hdr','product_test_hdr.test_id','order_master.product_test_id')
+		->join('test_standard','test_standard.test_std_id','order_master.test_standard')
+		->join('city_db','city_db.city_id','customer_master.customer_city')
+		->join('state_db','state_db.state_id','customer_master.customer_state')
+		->join('product_master_alias','product_master_alias.c_product_id','order_master.sample_description_id')
+		->join('department_product_categories_link','department_product_categories_link.product_category_id','order_master.product_category_id')
+		->join('departments','departments.department_id','department_product_categories_link.department_id')
+		->leftJoin('order_sample_priority','order_sample_priority.sample_priority_id','order_master.sample_priority_id')
+		->leftJoin('samples','samples.sample_id','order_master.sample_id')
+		->leftJoin('order_report_details','order_report_details.report_id','order_master.order_id')
+		->leftJoin('order_report_options as ref_sample_value_data','order_report_details.ref_sample_value','ref_sample_value_data.report_option_id')
+		->leftJoin('order_report_options as result_drived_value_data','order_report_details.result_drived_value','result_drived_value_data.report_option_id')
+		->leftJoin('order_report_options as deviation_value_data','order_report_details.deviation_value','deviation_value_data.report_option_id')
+		->leftjoin('customer_master as reporting_master','reporting_master.customer_id','order_master.reporting_to')
+		->leftjoin('city_db as reportngToCity','reportngToCity.city_id','reporting_master.customer_city')
+		->leftjoin('state_db as reportngToState','reportngToState.state_id','reporting_master.customer_state')
+		->leftjoin('customer_master as invoicing_master','invoicing_master.customer_id','order_master.invoicing_to')
+		->leftjoin('city_db as invoicingToCity','invoicingToCity.city_id','invoicing_master.customer_city')
+		->leftjoin('state_db as invoicingToState','invoicingToState.state_id','invoicing_master.customer_state')
+		->leftJoin('order_dispatch_dtl', function($join){
+		    $join->on('order_dispatch_dtl.order_id', '=', 'order_master.order_id');
+		    $join->where('order_dispatch_dtl.amend_status','0');
+		})
+		->leftJoin('order_process_log', function($join){
+		    $join->on('order_process_log.opl_order_id', '=', 'order_master.order_id');
+		    $join->where('order_process_log.opl_current_stage','1');
+		    $join->where('order_process_log.opl_amend_status','0');
+		})
+		->leftJoin('invoice_hdr_detail', function($join){
+		    $join->on('invoice_hdr_detail.order_id', '=', 'order_master.order_id');
+		})
+		->select('order_master.*','divisions.division_name','customer_master.customer_type','customer_master.customer_name','customer_master.customer_address','customer_types.customer_type as customerType','customer_master.customer_email','city_db.city_name','state_db.state_name','sales.name as sale_executive_name','product_master.product_name','product_test_hdr.test_code','test_standard.test_std_name','order_sample_priority.sample_priority_name','createdBy.name as createdByName','customer_discount_types.discount_type','samples.sample_no','order_report_details.*','order_process_log.*','product_master_alias.c_product_name as sample_description','customer_invoicing_types.*','departments.*','ref_sample_value_data.report_option_name as ref_sample_value_name','result_drived_value_data.report_option_name as result_drived_value_name','deviation_value_data.report_option_name as deviation_value_name','createdBy.user_signature','reportngToCity.city_name as reporting_city','reportngToState.state_name as reporting_state','invoicingToState.state_name as invoicing_state','invoicingToCity.city_name as invoicing_city','reporting_master.customer_id as reportingCustomerId','reporting_master.customer_name as reportingCustomerName','reporting_master.customer_address as altReportingAddress','invoicing_master.customer_id as invoicingCustomerId','invoicing_master.customer_name as invoicingCustomerName','invoicing_master.customer_address as altInvoicingAddress','customer_contact_persons.contact_name1','customer_contact_persons.contact_mobile1','order_process_log.opl_date as order_status_time','order_dispatch_dtl.dispatch_id as dispatch_status','order_master.billing_type_id','invoice_hdr_detail.invoice_dtl_id as invoice_generated_id')
+		->where('order_master.order_id','=',$order_id)
+		->first();
+
+	if(!empty($orderList->reporting_to) || !empty($orderList->invoicing_to)){
+	    $orderList->customer_name 		= !empty($orderList->reporting_to) ? $orderList->reportingCustomerName : $orderList->customer_name;
+	    $orderList->city_name 		= !empty($orderList->reporting_to) ? $orderList->reporting_city : $orderList->city_name;
+	    $orderList->state_name		= !empty($orderList->reporting_to) ? $orderList->reporting_state : $orderList->state_name;
+	    $orderList->customer_address 	= !empty($orderList->reporting_to) ? $orderList->altReportingAddress : $orderList->customer_address;
+	    $orderList->reportingCustomerName 	= !empty($orderList->reporting_to) ? $orderList->reportingCustomerName.'/'.$orderList->reporting_city : '';
+	    $orderList->invoicingCustomerName 	= !empty($orderList->invoicing_to) ? $orderList->invoicingCustomerName.'/'.$orderList->invoicing_city : '';
+	}
+	if(!empty($orderList->customer_id)){
+	    list($toEmails,$ccEmails) = $this->getCustomerEmailToCC($orderList->customer_id);
+	    $orderList->to_emails     = array_values($toEmails);
+	    $orderList->cc_emails     = array_values($ccEmails);
+	}
+
+	if(!empty($orderList->po_no) || !empty($orderList->po_date) || !empty($orderList->hold_reason) || !empty($orderList->order_sample_type) || !empty($orderList->reporting_to) || !empty($orderList->invoicing_to)){
+	    $orderList->extraDetail = true;
+	}
+	
+	//Checking Test report contains Header and Footer.
+	if(empty($orderList->header_content) && empty($orderList->footer_content)){
+	    list($header_content,$footer_content) = $this->getDynamicHeaderFooterTemplate('1',$orderList->division_id,$orderList->product_category_id);
+	    $orderList->header_content = $header_content;
+	    $orderList->footer_content = $footer_content;
+	}
+
+	//echo'<pre>';print_r($orderList); die;
+	return $orderList;
+    }
+
+    /*************************
+    *function to get Customer Email To CC
+    *
+    *************************/
+    function getCustomerEmailToCC($customer_id){
+	$customerEmailPrimary   = DB::table('customer_email_addresses')->where('customer_email_addresses.customer_id','=',$customer_id)->where('customer_email_addresses.customer_email_status','=','1')->where('customer_email_addresses.customer_email_type','=','P')->pluck('customer_email_addresses.customer_email')->all();
+	$customerEmailSecondary = DB::table('customer_email_addresses')->where('customer_email_addresses.customer_id','=',$customer_id)->where('customer_email_addresses.customer_email_status','=','1')->where('customer_email_addresses.customer_email_type','=','S')->pluck('customer_email_addresses.customer_email')->all();
+	return array($customerEmailPrimary,$customerEmailSecondary);
+    }
+
+    /*************************
+     *function to get order parameters
+     *
+    *************************/
+    function getOrderParameters($order_id){
+	return DB::table('order_parameters_detail')
+	    ->join('product_test_dtl','product_test_dtl.product_test_dtl_id','order_parameters_detail.product_test_parameter')
+	    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+	    ->join('product_master','product_master.product_id','product_test_hdr.product_id')
+	    ->join('test_parameter','order_parameters_detail.test_parameter_id','test_parameter.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+	    ->leftJoin('equipment_type','equipment_type.equipment_id','order_parameters_detail.equipment_type_id')
+	    ->leftJoin('method_master','method_master.method_id','order_parameters_detail.method_id')
+	    ->leftJoin('detector_master','detector_master.detector_id','order_parameters_detail.detector_id')
+	    ->leftJoin('customer_invoicing_running_time','customer_invoicing_running_time.invoicing_running_time_id','order_parameters_detail.running_time_id')
+	    ->select('product_test_dtl.test_id','product_test_hdr.test_code','product_master.product_id','product_master.product_name','product_master.p_category_id','order_parameters_detail.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','test_parameter.test_parameter_id as parameter_id','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.product_category_id','product_test_dtl.product_test_dtl_id','product_test_dtl.test_id','product_test_dtl.claim_dependent','product_test_dtl.claim_dependent','product_test_dtl.description','product_test_dtl.created_by','product_test_dtl.standard_value_to as productTestDtlStdValTo','product_test_dtl.standard_value_from as productTestDtlStdValFrom','test_parameter_categories.category_sort_by','detector_master.detector_name','customer_invoicing_running_time.invoicing_running_time')
+	    ->where('order_parameters_detail.order_id','=',$order_id)
+	    ->orderBy('product_test_dtl.parameter_sort_by','ASC')
+	    ->get();
+    }
+
+    /*************************
+     *function to get order parameters
+     * assigned to a employee
+    *************************/
+    function getAsssignedOrderParameters($order_id,$employee_id){
+	return DB::table('order_parameters_detail')
+	    ->join('schedulings','schedulings.order_parameter_id','order_parameters_detail.analysis_id')
+	    ->join('product_test_dtl','product_test_dtl.product_test_dtl_id','order_parameters_detail.product_test_parameter')
+	    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+	    ->join('product_master','product_master.product_id','product_test_hdr.product_id')
+	    ->join('test_parameter','test_parameter.test_parameter_id','order_parameters_detail.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+	    ->leftJoin('equipment_type','equipment_type.equipment_id','order_parameters_detail.equipment_type_id')
+	    ->leftJoin('method_master','method_master.method_id','order_parameters_detail.method_id')
+	    ->leftJoin('detector_master','detector_master.detector_id','order_parameters_detail.detector_id')
+	    ->leftJoin('customer_invoicing_running_time','customer_invoicing_running_time.invoicing_running_time_id','order_parameters_detail.running_time_id')
+	    ->select('product_test_hdr.test_id','product_test_hdr.test_code','product_master.product_id','product_master.product_name','product_master.p_category_id','order_parameters_detail.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.product_category_id','product_test_dtl.description','test_parameter_categories.category_sort_by','product_test_dtl.standard_value_to as productTestDtlStdValTo','product_test_dtl.standard_value_from as productTestDtlStdValFrom','detector_master.detector_name','customer_invoicing_running_time.invoicing_running_time')
+	    ->where('schedulings.order_id','=',$order_id)
+	    ->where('schedulings.employee_id','=',$employee_id)
+	    ->orderBy('product_test_dtl.parameter_sort_by','ASC')
+	    ->get();
+    }
+
+    /*************************
+     *function to get order parameters
+     * assigned to a tester (employee)
+    *************************/
+    function getAsssignedOrderParameterForTester($order_id,$employee_id){
+	return DB::table('order_parameters_detail')
+	    ->join('schedulings','schedulings.order_parameter_id','order_parameters_detail.analysis_id')
+	    ->join('product_test_dtl','product_test_dtl.product_test_dtl_id','order_parameters_detail.product_test_parameter')
+	    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+	    ->join('test_parameter','test_parameter.test_parameter_id','order_parameters_detail.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+	    ->leftJoin('equipment_type','equipment_type.equipment_id','order_parameters_detail.equipment_type_id')
+	    ->leftJoin('method_master','method_master.method_id','order_parameters_detail.method_id')
+	    ->leftJoin('detector_master','detector_master.detector_id','order_parameters_detail.detector_id')
+	    ->leftJoin('customer_invoicing_running_time','customer_invoicing_running_time.invoicing_running_time_id','order_parameters_detail.running_time_id')
+	    ->select('order_parameters_detail.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.product_category_id','product_test_dtl.description','test_parameter_categories.category_sort_by','detector_master.detector_name','customer_invoicing_running_time.invoicing_running_time')
+	    ->where('schedulings.order_id','=',$order_id)
+	    ->where('schedulings.employee_id','=',$employee_id)
+	    ->orderBy('product_test_dtl.parameter_sort_by','ASC')
+	    ->get();
+    }
+
+    /*************************
+     *function to get aleternative
+     * order parameters List
+    *************************/
+    function getAlternativeOrderParameters($order_id,$product_test_param_altern_method_id){
+	return DB::table('product_test_parameter_altern_method')
+	    ->join('order_parameters_detail','order_parameters_detail.test_param_alternative_id','product_test_parameter_altern_method.product_test_param_altern_method_id')
+	    ->join('product_test_hdr','product_test_hdr.test_id','product_test_parameter_altern_method.test_id')
+	    ->join('test_parameter','test_parameter.test_parameter_id','product_test_parameter_altern_method.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+	    ->join('equipment_type','equipment_type.equipment_id','product_test_parameter_altern_method.equipment_type_id')
+	    ->join('method_master','method_master.method_id','product_test_parameter_altern_method.method_id')
+	    ->leftJoin('detector_master','detector_master.detector_id','product_test_parameter_altern_method.detector_id')
+	    ->leftJoin('customer_invoicing_running_time','customer_invoicing_running_time.invoicing_running_time_id','product_test_parameter_altern_method.running_time_id')
+	    ->select('order_parameters_detail.analysis_id','order_parameters_detail.order_id','order_parameters_detail.claim_value','product_test_parameter_altern_method.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','order_parameters_detail.test_performed_by','order_parameters_detail.test_result','order_parameters_detail.claim_value_unit','test_parameter_categories.product_category_id','test_parameter_categories.category_sort_by','detector_master.detector_name','customer_invoicing_running_time.invoicing_running_time')
+	    ->where('product_test_parameter_altern_method.product_test_param_altern_method_id',$product_test_param_altern_method_id)
+	    ->where('order_parameters_detail.order_id',$order_id)
+	    ->first();
+    }
+
+    //get Alternative Order Parameters
+    function getAlternativeParametersDetail($id){
+	return DB::table('product_test_parameter_altern_method')
+	    ->join('product_test_hdr','product_test_hdr.test_id','product_test_parameter_altern_method.test_id')
+	    ->join('test_parameter','test_parameter.test_parameter_id','product_test_parameter_altern_method.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')
+	    ->join('equipment_type','equipment_type.equipment_id','product_test_parameter_altern_method.equipment_type_id')
+	    ->join('method_master','method_master.method_id','product_test_parameter_altern_method.method_id')
+	    ->leftJoin('detector_master','detector_master.detector_id','product_test_parameter_altern_method.detector_id')
+	    ->leftJoin('customer_invoicing_running_time','customer_invoicing_running_time.invoicing_running_time_id','product_test_parameter_altern_method.running_time_id')
+	    ->select('product_test_parameter_altern_method.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','detector_master.detector_name','customer_invoicing_running_time.invoicing_running_time')
+	    ->where('product_test_parameter_altern_method.product_test_param_altern_method_id',$id)
+	    ->first();
+    }
+
+    //Check the Reference Number
+    function checkReferenceNumber($order_date,$refNumber){
+	    $data = DB::table('order_master')->where('order_master.reference_no','=',$refNumber)->count();
+	if(strtotime($refNumber) < strtotime($order_date)){
+	    return true;
+	}else{
+	    return false;
+	}
+    }
+
+    /*******************************************
+     *Function: generate Order Expected Due Date
+     *Created By: Praveen Singh
+     ******************************************/
+    function generateUpdateOrderExpectedDueDate($order_id,$date=Null){
+
+	global $order,$models,$mail;
+
+	$dataSave = array();
+
+	$orderDetail =  DB::table('order_master')->select('order_id','order_date','booking_date')->where('order_master.order_id','=',$order_id)->first();
+
+	if(!empty($orderDetail->booking_date)){
+
+	    $expectedDueDate           = !empty($date) ? $date : $orderDetail->booking_date;
+	    $orderDetail->booking_date = !empty($date) ? $date : $orderDetail->booking_date;
+	    
+	    $orderParametersDetail = DB::table('order_parameters_detail')->select('time_taken_days','time_taken_mins')->where('order_id','=',$order_id)->get();
+	    $getHolidays 	   = DB::table('holiday_master')->select('holiday_name','holiday_date')->get()->toArray();
+
+	    foreach($orderParametersDetail as $orderParameters){
+		$hrMinExplodedData = explode(':',$orderParameters->time_taken_mins);
+		$time_taken_days[] = $orderParameters->time_taken_days;
+	    }
+	    //Getting Maximum days from all parameter test allocated days
+	    $total_time_taken_days  = !empty($time_taken_days) && array_filter($time_taken_days) ? max($time_taken_days) : '0';
+
+	    if(!empty($total_time_taken_days)){
+
+  		//if booking date after 2.00 PM
+  		if(strtotime(date('ha',strtotime($orderDetail->booking_date))) > strtotime("2pm")){
+  		    $total_time_taken_days = $total_time_taken_days + 1;
+  		}
+
+      		//Add days to current date to calculate the observed expected due date
+      		$expectedDueDate = date(MYSQLDATETIMEFORMAT,strtotime('+'.$total_time_taken_days.' day',strtotime($orderDetail->booking_date)));
+
+      		//Checking there any sunday lies on calculated days,then add number of days according to number of sunday in expected due date
+      		$sundays   = $models->getSundays(CURRENTDATE,$expectedDueDate);
+		$holidays  = $models->getHolidays(CURRENTDATE,$expectedDueDate,$getHolidays);
+
+      		if(!empty($sundays)){
+      		    $expectedDueDate = date(MYSQLDATETIMEFORMAT,strtotime('+'.count($sundays).' day',strtotime($expectedDueDate)));
+      		}
+		if($holidays){
+		    $expectedDueDate = date(MYSQLDATETIMEFORMAT,strtotime('+'.count($holidays).' day',strtotime($expectedDueDate)));
+		}
+
+      		//if final expected due date lies on sunday,then again add +1 day in expected due date
+      		if(date('l', strtotime($expectedDueDate))== 'Sunday'){
+      		    $expectedDueDate = date(MYSQLDATETIMEFORMAT,strtotime('+1 day',strtotime($expectedDueDate)));
+      		}
+	    }
+
+	    //Dept. Due Date and Report Due Date
+	    list($deptDueDate,$reportDueDate) = $this->generateReportAndDepartmentDueDate($orderDetail->booking_date, $expectedDueDate);
+
+	    $dataSave = array('order_master.expected_due_date' => $expectedDueDate,'order_master.dept_due_date' => $deptDueDate,'order_master.report_due_date' => $reportDueDate);
+	    return !empty($dataSave) ? DB::table('order_master')->where('order_master.order_id',$order_id)->update($dataSave) : false;
+	}
+    }
+
+    //generate Report Due and Department Due Date using Expected Due Date
+    function generateReportAndDepartmentDueDate($orderDate,$expectedDueDate){
+	
+	global $order,$models;
+
+	$deptDueDate = 	$deptDueDate = '';
+
+	//Dept. Due Date and Report Due Date
+	if(!empty($orderDate) && !empty($expectedDueDate)){
+	    $numberOfdays = count($models->date_range($orderDate, $expectedDueDate));
+	    if($numberOfdays <= '3'){
+		$calDeptDueDate   = $models->sub_days_in_date($expectedDueDate,'1',MYSQLDATETIMEFORMAT);;
+		$calReportDueDate = $models->sub_days_in_date($expectedDueDate,'1',MYSQLDATETIMEFORMAT);;
+	    }else{
+		$calDeptDueDate   = $models->sub_days_in_date($expectedDueDate,'2',MYSQLDATETIMEFORMAT);
+		$calReportDueDate = $models->sub_days_in_date($expectedDueDate,'1',MYSQLDATETIMEFORMAT);
+	    }
+	    $deptDueDate   = $models->checkDateIsSunday($calDeptDueDate) ? $models->sub_days_in_date($calDeptDueDate,'1',MYSQLDATETIMEFORMAT) : $calDeptDueDate;
+	    $reportDueDate = $models->checkDateIsSunday($calReportDueDate) ? $models->sub_days_in_date($calReportDueDate,'1',MYSQLDATETIMEFORMAT) : $calReportDueDate;
+	}
+
+	return array($deptDueDate,$reportDueDate);
+    }
+
+    //Adding Order Parameter()Scheduling Jobs in Scheduling Table
+    function createOrderSchedulingJobs($order_id){
+	
+	$jobsForScheduling = DB::table('order_parameters_detail')
+				->join('order_master','order_master.order_id','order_parameters_detail.order_id')
+				->select('order_parameters_detail.order_id','order_parameters_detail.analysis_id','order_parameters_detail.equipment_type_id','order_master.product_category_id')
+				->where('order_parameters_detail.order_id',$order_id)
+				->get();
+
+	if(!empty($jobsForScheduling)){
+		$dataSave = array();
+		foreach($jobsForScheduling as $key => $jobs){
+			$dataSave[$key]['order_id']            = $jobs->order_id;
+			$dataSave[$key]['order_parameter_id']  = $jobs->analysis_id;
+			$dataSave[$key]['product_category_id'] = $jobs->product_category_id;
+			$dataSave[$key]['equipment_type_id']   = $jobs->equipment_type_id;
+			$dataSave[$key]['status']              = '0';
+			$dataSave[$key]['created_by']          = USERID;
+		}
+		return !empty($dataSave) && DB::table('schedulings')->insert($dataSave) ? true : false;
+	}
+    }
+
+    //Adding Order Parameter()Scheduling Jobs in Scheduling Table
+    function updateOrderSchedulingJobs($analysisId){
+	$jobsForScheduling = DB::table('order_parameters_detail')
+			    ->join('order_master','order_master.order_id','order_parameters_detail.order_id')
+			    ->select('order_parameters_detail.order_id','order_parameters_detail.analysis_id','order_parameters_detail.equipment_type_id','order_master.product_category_id')
+			    ->where('order_parameters_detail.analysis_id',$analysisId)
+			    ->get();
+	if(!empty($jobsForScheduling)){
+	    $dataSave = array();
+	    foreach($jobsForScheduling as $key => $jobs){
+		$dataSave[$key]['order_id']            = $jobs->order_id;
+		$dataSave[$key]['order_parameter_id']  = $jobs->analysis_id;
+		$dataSave[$key]['product_category_id'] = $jobs->product_category_id;
+		$dataSave[$key]['equipment_type_id']   = $jobs->equipment_type_id;
+		$dataSave[$key]['status']              = '0';
+		$dataSave[$key]['created_by']          = USERID;
+	    }
+	    return !empty($dataSave) && DB::table('schedulings')->insert($dataSave) ? true : false;
+	}
+    }
+
+    //Updating Sample Status of booked Order in  samples table
+    function UpdateSampleStatusOfBookedSample($order_id){
+	$orderData = DB::table('order_master')->where('order_master.order_id',$order_id)->first();
+	return !empty($orderData->sample_id) ? DB::table('samples')->where('samples.sample_id',$orderData->sample_id)->update(['samples.sample_status' => '1']) : false;
+    }
+
+    //Getting Next Sampe Detail ID from samples table
+    function getNextSampleForOrderBooking($sample_id){
+	$department_ids = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : '0';
+	$dataObj = DB::table('samples')
+		->where('samples.sample_id','<>',$sample_id)
+		->where('samples.customer_id','<>',null)
+		->where('samples.sample_status','0');
+	if(!empty($department_ids)){
+	    $dataObj->whereIn('samples.product_category_id',$department_ids);
+	}
+	$data = $dataObj->first();
+	return !empty($data->sample_id) ? $data->sample_id : '0';
+    }
+
+    function getSundays($start, $end) {
+	$timestamp1 = strtotime($start);
+	$timestamp2 = strtotime($end);
+	$sundays    = array();
+	$oneDay     = 60*60*24;
+	for($i = $timestamp1; $i <= $timestamp2; $i += $oneDay) {
+	    $day = date('N', $i);
+	    if($day == 7) {
+		$sundays[] = date('Y-m-d', $i);
+		$i += 6 * $oneDay;
+	    }
+	}
+	return array_filter($sundays);
+    }
+
+    //manage order log
+    function updateOrderLog($orderId,$status,$orderStageDate=NULL){
+	$dataSave 			 = array();
+	$dataSave['opl_order_id'] 	 = $orderId;
+	$dataSave['opl_order_status_id'] = $status;
+	$dataSave['opl_date'] 		 = !empty($orderStageDate) ? $orderStageDate : CURRENTDATETIME;
+	$dataSave['opl_user_id'] 	 = USERID;
+	return !empty($dataSave) && DB::table('order_process_log')->insert($dataSave) ? true : false;
+    }
+
+    //manage order status and Order Log
+    function updateOrderStausLog($orderId,$status,$orderStageDate=NULL){
+	if(!empty($orderId)){
+	    DB::table('order_master')->where('order_id',$orderId)->update(['status'=> $status]);
+	    DB::table('order_process_log')->where('opl_order_id',$orderId)->update(['opl_current_stage'=> '0']);
+	    $dataSave 			 	= array();
+	    $dataSave['opl_order_id'] 	 	= $orderId;
+	    $dataSave['opl_order_status_id'] 	= $status;
+	    $dataSave['opl_date'] 		= !empty($orderStageDate) ? $orderStageDate : CURRENTDATETIME;
+	    $dataSave['opl_user_id'] 	 	= USERID;
+	    $dataSave['opl_current_stage']   	= '1';
+	    return !empty($dataSave) && DB::table('order_process_log')->insert($dataSave) ? true : false;
+	}
+	return false;
+    }
+
+    //manage order status and Order Log
+    function updateOrderStatusToNextPhase($orderId,$status,$orderStageDate=NULL){
+	if(!empty($orderId)){
+	    DB::table('order_master')->where('order_id',$orderId)->update(['status'=> $status]);
+	    DB::table('order_process_log')->where('opl_order_id',$orderId)->update(['opl_current_stage'=> '0']);
+	    $dataSave 			 	= array();
+	    $dataSave['opl_order_id'] 	 	= $orderId;
+	    $dataSave['opl_order_status_id'] 	= $status;
+	    $dataSave['opl_date'] 		= !empty($orderStageDate) ? $orderStageDate : CURRENTDATETIME;
+	    $dataSave['opl_current_stage']   	= '1';
+	    return !empty($dataSave) && DB::table('order_process_log')->insert($dataSave) ? true : false;
+	}
+	return false;
+    }
+
+    //manage order status and Order Log
+    function updateOrderStausLogNote($orderId,$note){
+	if(!empty($orderId)){
+	    $dataSave = DB::table('order_process_log')->where('opl_order_id',$orderId)->where('order_process_log.opl_current_stage','=','1')->update(['note'=> $note]);
+	    return !empty($dataSave) ? true : false;
+	}
+	return false;
+    }
+
+    /**
+     *
+     * update amend status while dispatch order from reports
+     *
+     ***/
+    function updateAmendStatus($orderId,$status){
+	$updateAmendStatus = DB::table('order_dispatch_dtl')->where('order_id','=',$orderId)->update(['amend_status'=>$status]);
+	return !empty($updateAmendStatus) ? true : false;
+    }
+
+    //generate report number in order_report_details table
+    function generateReportNumber($orderId){
+	if(!empty($orderId)){
+		$dataSave = array();
+		$reportData = array();
+		$orderNumber = $this->getOrderDetail($orderId);
+		if(!empty($orderNumber)){
+			$reportData['report_no']   = REPORT_PREFIX.$orderNumber->order_no;
+			$reportData['report_date'] = CURRENTDATETIME;
+			$dataSave = DB::table('order_report_details')->where('report_id',$orderId)->update($reportData);
+		}
+		return !empty($dataSave) ? true : false;
+	}
+	return false;
+    }
+
+    //manage error test report by when reporter need modification
+    function updateOrderStausLogErrorTestReport($analysisArr){
+	if(!empty($analysisArr)){
+		foreach($analysisArr as $analysis_id){
+			$dataSave[$analysis_id] = DB::table('order_parameters_detail')->where('analysis_id',$analysis_id)->update(['test_result'=> null]);
+			DB::table('schedulings')->where('schedulings.order_parameter_id',$analysis_id)->update(['schedulings.status'=> '1','notes'=> null]);
+		}
+	}
+	return !empty($dataSave) ? true : false;
+    }
+
+    //Getting Order Track Stage
+    function getOrderTrackRecord($orderId){
+	$defaultOrderTrack = DB::table('order_status')->select('order_status_id','order_status_name')->where('status','1')->get();
+	if(!empty($defaultOrderTrack)){
+		foreach($defaultOrderTrack as $key => $defaultTrack){
+			$orderProcessLog = DB::table('order_process_log')->select('opl_order_status_id')->where('opl_order_id',$orderId)->where('opl_current_stage','1')->first();
+			$defaultTrack->track = null;
+			if(!empty($defaultTrack->order_status_id) && !empty($orderProcessLog->opl_order_status_id) && $defaultTrack->order_status_id <= $orderProcessLog->opl_order_status_id){
+				$defaultTrack->track = DB::table('order_process_log')->select('opl_id','opl_date','opl_current_stage')->where('opl_order_id',$orderId)->where('opl_order_status_id',$defaultTrack->order_status_id)->orderBy('opl_id','DESC')->first();
+			}
+		}
+	}
+	return $defaultOrderTrack;
+    }
+
+    //Getting Order log
+    function getOrderLogRecord($orderId){
+	$orderLogList = DB::table('order_process_log')
+	    ->join('order_master','order_master.order_id','order_process_log.opl_order_id')
+	    ->join('order_status','order_status.order_status_id','order_process_log.opl_order_status_id')
+	    ->leftJoin('users','users.id','order_process_log.opl_user_id')
+	    ->select('order_process_log.*','order_master.order_no','users.name','order_status.order_status_name')
+	    ->where('order_process_log.opl_order_id',$orderId)
+	    ->orderBy('order_process_log.opl_id','desc')
+	    ->get();
+	return $orderLogList;
+    }
+
+    /**
+    * get Order Details
+    * Date :
+    * Author :
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function getOrderDetail($order_id) {
+	return DB::table('order_master')->where('order_id','=',$order_id)->first();
+    }
+
+    /**
+    * get Order Details
+    * Date :
+    * Author :
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function createAliaAndUpdateOrderSampleName($submitedRawData) {
+
+	//parsing the raw form data
+	parse_str($submitedRawData, $submitedData);
+
+	$dataSave			= array();
+	$dataSave['c_product_name'] 	= trim($submitedData['sample_description']);
+	$dataSave['product_id'] 	= $submitedData['product_id'];
+	$dataSave['created_by'] 	= USERID;
+	$dataSave['view_type'] 		= '1';
+	$dataSave['c_product_status'] 	= '1';
+
+	$data = DB::table('product_master_alias')->where('product_master_alias.c_product_name','=',trim($submitedData['sample_description']))->where('product_master_alias.product_id','=',trim($submitedData['product_id']))->first();
+	return empty($data) ? DB::table('product_master_alias')->insertGetId($dataSave) : $data->c_product_id;
+    }
+
+    /**
+    * get Order Details
+    * Date :
+    * Author :
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function getSampleDescriptionDetail($sample_description,$allCategotyIds,$invoicing_type_id,$product_category_id){
+
+	$data = DB::table('product_master_alias')
+		->join('product_master','product_master.product_id','product_master_alias.product_id')
+		->join('product_categories','product_categories.p_category_id','product_master.p_category_id')
+		->join('customer_invoicing_rates','customer_invoicing_rates.cir_c_product_id','product_master_alias.c_product_id')
+		->select('product_master_alias.c_product_id','product_master_alias.c_product_name')
+		->where('customer_invoicing_rates.invoicing_type_id',$invoicing_type_id)
+		->where('customer_invoicing_rates.cir_product_category_id',$product_category_id)
+		->whereIn('product_master.p_category_id',$allCategotyIds)
+		->where('product_master_alias.c_product_name', '=',trim($sample_description))
+		->first();
+
+	return !empty($data) ? $data->c_product_id : '0';
+    }
+
+    /**
+    * Get list of companies on page load.
+    * Date : 01-03-17
+    * Author : Praveen Singh
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function checkAddCustomerInvoivingRate($sample_description_id, $rawPostedData){
+
+	global $order,$models;
+
+	$postedData = $orderParametersDetail = array();
+	$invoicingPriceAllocated = '0';
+
+	//getting order parameters of a Customer
+	parse_str($rawPostedData, $postedData);
+
+	if(!empty($postedData['order_sample_type'])){
+	    return true;
+	}else{
+
+	    $customer_id         = !empty($postedData['customer_id']) ? $postedData['customer_id'] : '0';
+	    $division_id         = !empty($postedData['division_id']) ? $postedData['division_id'] : '0';
+	    $invoicing_type_id 	 = !empty($postedData['invoicing_type_id']) ? $postedData['invoicing_type_id'] : '0';
+	    $product_category_id = !empty($postedData['product_category_id']) ? $models->getMainProductCatParentId($postedData['product_category_id']) : '0';
+
+	    if(!empty($customer_id) && !empty($invoicing_type_id) && !empty($product_category_id)){
+
+		//getting customer data**************************************
+		$customerData = DB::table('customer_master')->leftJoin('customer_invoicing_types','customer_invoicing_types.invoicing_type_id','=','customer_master.invoicing_type_id')->select('customer_master.*','customer_invoicing_types.invoicing_type')->where('customer_master.customer_id','=',$customer_id)->first();
+
+		if(!empty($customerData)){
+
+		    //Conditional Invoicing Type*********************************
+		    if($invoicing_type_id == '1'){			//ITC Parameter Wise
+			$invoicingPriceAllocated = !empty($postedData['order_parameters_detail']['test_parameter_id']) ? true : false;
+		    }else if($invoicing_type_id == '2'){		//State Wise Product
+			$invoicingData = DB::table('customer_invoicing_rates')
+						->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+						->where('customer_invoicing_rates.cir_state_id','=',$customerData->customer_state)
+						->where('customer_invoicing_rates.cir_c_product_id','=',$sample_description_id)
+						->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+						->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+						->first();
+			$invoicingPriceAllocated = !empty($invoicingData) ? $invoicingData->invoicing_rate : '0';
+		    }else if($invoicing_type_id == '3'){		//Customer Wise Product or Fixed rate party
+
+			//In case of fixed Rate Party
+			$invoicingData = DB::table('customer_invoicing_rates')
+						->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+						->where('customer_invoicing_rates.cir_customer_id','=',$customerData->customer_id)
+						->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+						->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+						->first();
+
+			//If Product ID is not null,then Customer Wise Product
+			if(!empty($invoicingData->cir_c_product_id)){
+				$invoicingData = DB::table('customer_invoicing_rates')
+						->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+						->where('customer_invoicing_rates.cir_city_id','=',$customerData->customer_city)
+						->where('customer_invoicing_rates.cir_customer_id','=',$customerData->customer_id)
+						->where('customer_invoicing_rates.cir_c_product_id','=',$sample_description_id)
+						->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+						->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+						->first();
+			}
+			$invoicingPriceAllocated = !empty($invoicingData) ? $invoicingData->invoicing_rate : '0';
+		    }else if($invoicing_type_id == '4'){		//Customer Wise Parameters
+			if(!empty($postedData['order_parameters_detail'])){
+			    foreach($postedData['order_parameters_detail'] as $keyParameter => $orderParametersData){
+				foreach($orderParametersData as $key => $values){
+				    $orderParametersDetail[$key][$keyParameter] = empty($values) ? null : $values;
+				}
+			    }
+			}
+			if($product_category_id == '2'){
+			    $invoicingPriceAllocated = '1'; //$this->getCustomerWiseAssayParameterRates($invoicing_type_id,$customerData->customer_id,$division_id,$product_category_id,$orderParametersDetail);
+			}else{
+			    $invoicingPriceAllocated = $this->getCustomerWiseParameterRates($invoicing_type_id,$customerData->customer_id,$division_id,$product_category_id,$orderParametersDetail);
+			}
+		    }
+		}
+	    }
+	    return $invoicingPriceAllocated;
+	}
+    }
+
+    /**
+
+    * Get list of companies on page load.
+    * Date : 01-03-17
+    * Author : Praveen Singh
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function checkEditCustomerInvoivingRate($sample_description_id, $rawPostedData){
+
+	global $order,$models;
+
+	$parameterWiseRateData   = $postedData = $orderParametersDetailNew = array();
+	$invoicingPriceAllocated = '0';
+
+	//getting order parameters of a Customer
+	parse_str($rawPostedData, $postedData);
+
+	if(!empty($postedData['order_sample_type'])){
+	    return true;
+	}else{
+
+	    $order_id 	       = !empty($postedData['order_id']) ? $postedData['order_id'] : '0';
+	    $invoicing_type_id = !empty($postedData['invoicing_type_id']) ? $postedData['invoicing_type_id'] : '0';
+
+	    if(!empty($invoicing_type_id) && !empty($order_id)){
+
+		//getting Order data*****************************************
+		$orderData    		= DB::table('order_master')->where('order_master.order_id','=',$order_id)->first();
+		$customer_id  		= !empty($orderData->customer_id) ? $orderData->customer_id : '0';
+		$division_id            = !empty($orderData->division_id) ? $orderData->division_id : '0';
+		$product_category_id 	= !empty($orderData->product_category_id) ? $orderData->product_category_id : '0';
+
+		//getting customer data**************************************
+		$customerData = DB::table('customer_master')
+				->join('customer_invoicing_types','customer_invoicing_types.invoicing_type_id','=','customer_master.invoicing_type_id')
+				->select('customer_master.*','customer_invoicing_types.invoicing_type')
+				->where('customer_master.customer_id','=',$customer_id)
+				->first();
+
+		if(!empty($customerData)){
+
+		    if($invoicing_type_id == '1'){			//ITC Parameter Wise
+			$invoicingPriceAllocated = DB::table('order_parameters_detail')->where('order_parameters_detail.order_id', $order_id)->sum('selling_price');
+		    }else if($invoicing_type_id == '2'){		//State Wise Product
+			$invoicingData = DB::table('customer_invoicing_rates')
+				->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+				->where('customer_invoicing_rates.cir_state_id','=',$customerData->customer_state)
+				->where('customer_invoicing_rates.cir_c_product_id','=',$sample_description_id)
+				->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+				->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+				->first();
+			$invoicingPriceAllocated = !empty($invoicingData) ? $invoicingData->invoicing_rate : '0';
+		    }else if($invoicing_type_id == '3'){		//Customer Wise Product or Fixed rate party
+
+			//In case of fixed Rate Party
+			$invoicingData = DB::table('customer_invoicing_rates')
+						->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+						->where('customer_invoicing_rates.cir_customer_id','=',$customerData->customer_id)
+						->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+						->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+						->first();
+
+			//If Product ID is not null,then Customer Wise Product
+			if(!empty($invoicingData->cir_c_product_id)){
+				$invoicingData = DB::table('customer_invoicing_rates')
+						->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+						->where('customer_invoicing_rates.cir_city_id','=',$customerData->customer_city)
+						->where('customer_invoicing_rates.cir_customer_id','=',$customerData->customer_id)
+						->where('customer_invoicing_rates.cir_c_product_id','=',$sample_description_id)
+						->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+						->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+						->first();
+			}
+			$invoicingPriceAllocated = !empty($invoicingData) ? $invoicingData->invoicing_rate : '0';
+		    }else if($invoicing_type_id == '4'){		//Customer Wise Parameters
+
+			//Newly Added Parameters
+			if(!empty($postedData['order_parameters_detail'])){
+			    foreach($postedData['order_parameters_detail'] as $key => $values){
+				$key = str_replace("'","",$key);
+				if($key == 'new'){
+				    $orderParametersDetailNew = $values;
+				}
+			    }
+			}
+
+			//Existing Added Parameters
+			$orderParametersDetailExisting = DB::table('order_parameters_detail')->where('order_parameters_detail.order_id', $order_id)->whereNotNull('equipment_type_id')->get()->toArray();
+
+			//Merging of Parameters
+			if(!empty($orderParametersDetailNew) && !empty($orderParametersDetailExisting)){
+			    $orderParametersDetail = array_values(array_merge($orderParametersDetailExisting,$orderParametersDetailNew));
+			}else{
+			    $orderParametersDetail = $orderParametersDetailExisting;
+			}
+			if($product_category_id == '2'){
+			    $invoicingPriceAllocated = '1'; //$this->getCustomerWiseAssayParameterRates($invoicing_type_id,$customerData->customer_id,$division_id,$product_category_id,$models->convertObjectToArray($orderParametersDetail));
+			}else{
+			    $invoicingPriceAllocated = $this->getCustomerWiseParameterRates($invoicing_type_id,$customerData->customer_id,$division_id,$product_category_id,$models->convertObjectToArray($orderParametersDetail));
+			}
+		    }
+		}
+	    }
+	    return $invoicingPriceAllocated;
+	}
+    }
+
+    /**
+    * Get Customer Wise Parameter Rates
+    * Date : 12-April-2018
+    * Author : Praveen Singh
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function getCustomerWiseParameterRates($invoicing_type_id,$customer_id,$division_id,$product_category_id,$orderParametersDetail){
+
+	global $order,$models;
+
+	$parameterWiseRateData = array();
+	$invoicingRate 	       = 0;
+
+	if(!empty($orderParametersDetail)){
+	    foreach($orderParametersDetail as $key => $orderParameters){
+		$isInvoicingNeeded = DB::table('test_parameter')->where('test_parameter.test_parameter_id',$orderParameters['test_parameter_id'])->where('test_parameter.test_parameter_invoicing','1')->first();
+		if(!empty($isInvoicingNeeded) && !empty($orderParameters['test_parameter_id']) && !empty($orderParameters['equipment_type_id'])){
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			    ->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			    ->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			    ->where('customer_invoicing_rates.cir_parameter_id','=',$orderParameters['test_parameter_id'])
+			    ->where('customer_invoicing_rates.cir_equipment_type_id','=',$orderParameters['equipment_type_id'])
+			    ->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			    ->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			    ->first();
+		    $parameterWiseRateData[$orderParameters['test_parameter_id']] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate : '0';
+		}
+	    }
+	    $invoicingRate = in_array('0',$parameterWiseRateData) ? '0' : array_sum($parameterWiseRateData);
+	}
+	return $invoicingRate;
+    }
+
+    /**
+    * Get Customer Wise Assay Parameter Rates
+    * Date : 12-April-2018
+    * Author : Praveen Singh
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    */
+    public function getCustomerWiseAssayParameterRates($invoicing_type_id,$customer_id,$division_id,$product_category_id,$orderParametersDetail){
+
+	global $order,$models;
+
+	$parameterWiseRateData = $paramterInvoicingWithCount = $withDectorsTestCategory = $withDectorsAssayCategory = $withoutDectorsTestCategory = $withoutDectorsTestParentCategory = $withoutDectorsAssayCategory = $withoutDectorsTestCategory = $noOfInjectionWithDectorsCategory = $withDectorsTestCategoryInfo = $withDectorsAssayCategoryInfo = $withoutDectorsAssayCategoryInfo = $withoutDectorsTestParentCategoryInfo = array();
+	$invoicingRate 	       = 0;
+
+	if(!empty($orderParametersDetail)){
+	    foreach($orderParametersDetail as $key => $values){
+		$subValueObj = DB::table('product_test_dtl')
+			    ->select('parentProductCategoryDB.p_category_id as product_category_id','productCategoryDB.p_category_id','subProductCategoryDB.p_category_id as sub_p_category_id','test_parameter_categories.test_para_cat_id as test_parameter_category_id')
+			    ->join('product_test_hdr','product_test_hdr.test_id','product_test_dtl.test_id')
+			    ->join('product_master','product_master.product_id','product_test_hdr.product_id')
+			    ->join('product_categories as subProductCategoryDB','subProductCategoryDB.p_category_id','product_master.p_category_id')
+			    ->join('product_categories as productCategoryDB','productCategoryDB.p_category_id','subProductCategoryDB.parent_id')
+			    ->join('product_categories as parentProductCategoryDB','parentProductCategoryDB.p_category_id','productCategoryDB.parent_id')
+			    ->join('test_parameter','test_parameter.test_parameter_id','product_test_dtl.test_parameter_id')
+			    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id');
+
+		if(!empty($values['order_id'])){ //In case of Editing of Order
+		    $subValueObj->join('order_parameters_detail','order_parameters_detail.product_test_parameter','product_test_dtl.product_test_dtl_id');
+		    $subValueObj->where('order_parameters_detail.order_id',$values['order_id']);
+		    $subValueObj->where('order_parameters_detail.product_test_parameter',$values['product_test_parameter']);
+		}
+		$subValueObj->where('product_test_dtl.product_test_dtl_id',$values['product_test_parameter']);
+		$subValueObj->where('test_parameter.test_parameter_id',$values['test_parameter_id']);
+		$subValues = $models->convertObjectToArray($subValueObj->first());
+
+		//Merging Values and Sub Vaules
+		$orderParameters = !empty($subValues) ? array_merge($values,$subValues) : $values;
+		if(!empty($orderParameters)){
+		    //Checking the global Invoicing allowed to the parameters
+		    $isInvoicingNeeded = DB::table('test_parameter')->where('test_parameter.test_parameter_id',$orderParameters['test_parameter_id'])->where('test_parameter.test_parameter_invoicing','1')->first();
+		    if(!empty($isInvoicingNeeded) && !empty($orderParameters['test_parameter_id']) && !empty($orderParameters['equipment_type_id'])){
+			if(!empty($orderParameters['detector_id']) && !empty($orderParameters['running_time_id']) && !empty($orderParameters['no_of_injection'])){	//checking If Detector,Running Time,no of Injection exist
+			    if(!empty($orderParameters['test_parameter_category_id']) && $orderParameters['test_parameter_category_id'] == '1'){
+				if(!empty($orderParameters['test_parameter_invoicing_parent_id'])){
+				    $groupedColoumName = $orderParameters['test_parameter_category_id'].'-'.$orderParameters['test_parameter_invoicing_parent_id'].'-'.$orderParameters['product_category_id'].'-'.$orderParameters['p_category_id'].'-'.$orderParameters['sub_p_category_id'].'-'.$orderParameters['equipment_type_id'].'-'.$orderParameters['detector_id'].'-'.$orderParameters['running_time_id'];
+				    $noOfInjectionWithDectorsCategory[$groupedColoumName][] 	= $orderParameters['no_of_injection'];
+				    $orderParameters['no_of_per_injection']    	   		= '1';
+				    $withDectorsTestCategory[$groupedColoumName][] 		= $orderParameters;
+				}else{
+				    $withoutDectorsTestCategory[$orderParameters['product_test_parameter']] = $orderParameters;
+				}
+			    }else{
+				$groupedColoumName = $orderParameters['test_parameter_category_id'].'-'.$orderParameters['product_category_id'].'-'.$orderParameters['p_category_id'].'-'.$orderParameters['sub_p_category_id'].'-'.$orderParameters['equipment_type_id'].'-'.$orderParameters['detector_id'].'-'.$orderParameters['running_time_id'];
+				$noOfInjectionWithDectorsCategory[$groupedColoumName][] 	= $orderParameters['no_of_injection'];
+				$orderParameters['no_of_per_injection']     			= '1';
+				$withDectorsAssayCategory[$groupedColoumName][] 		= $orderParameters;
+			    }
+			}else{
+			    if(!empty($orderParameters['test_parameter_category_id']) && $orderParameters['test_parameter_category_id'] == '1'){
+				if(!empty($orderParameters['test_parameter_invoicing_parent_id'])){
+				    $groupedColoumName = $orderParameters['test_parameter_category_id'].'-'.$orderParameters['test_parameter_invoicing_parent_id'].'-'.$orderParameters['product_category_id'].'-'.$orderParameters['p_category_id'].'-'.$orderParameters['sub_p_category_id'].'-'.$orderParameters['equipment_type_id'];
+				    $withoutDectorsTestParentCategory[$groupedColoumName][] = $orderParameters;
+				}else{
+				    $withoutDectorsTestCategory[$orderParameters['product_test_parameter']] = $orderParameters;
+				}
+			    }else{
+				$groupedColoumName = $orderParameters['test_parameter_category_id'].'-'.$orderParameters['product_category_id'].'-'.$orderParameters['p_category_id'].'-'.$orderParameters['sub_p_category_id'].'-'.$orderParameters['equipment_type_id'];
+				$withoutDectorsAssayCategory[$groupedColoumName][] = $values;
+			    }
+			}
+		    }
+		}
+	    }
+	    
+	    //echo '<pre>';print_r($withDectorsTestCategory);
+	    //echo '<pre>';print_r($withoutDectorsTestParentCategory);
+	    //echo '<pre>';print_r($withoutDectorsTestCategory);
+	    //echo '<pre>';print_r($withDectorsAssayCategory);
+	    //echo '<pre>';print_r($withoutDectorsAssayCategory);
+
+	    //Calculating Rates of Test Parameter Category with Detector,Running Time,no of Injection
+	    if(!empty($withDectorsTestCategory)){
+		foreach($withDectorsTestCategory as $nestedkeyWithIds => $values){
+		    $withDectorsTestCategoryInfo[$nestedkeyWithIds]['equipment_count'] 		= is_array($values) ? count($values) : 0;
+		    $withDectorsTestCategoryInfo[$nestedkeyWithIds]['total_injection_count'] 	= isset($noOfInjectionWithDectorsCategory[$nestedkeyWithIds]) && is_array($noOfInjectionWithDectorsCategory) ? $noOfInjectionWithDectorsCategory[$nestedkeyWithIds] : 0;
+		    $withDectorsTestCategoryInfo[$nestedkeyWithIds]['invoicing'] 		= current($values);
+		}		
+		foreach($withDectorsTestCategoryInfo as $nestedkeyWithIds => $values){
+		    $keyTestData 				= $models->getExplodedData($nestedkeyWithIds,'-');
+		    $test_parameter_category_id 		= !empty($keyTestData[0]) ? $keyTestData[0] : '0';
+		    $test_parameter_invoicing_parent_id 	= !empty($keyTestData[1]) ? $keyTestData[1] : '0';
+		    $testParameterInvoicingParentData 		= DB::table('test_parameter_invoicing_parents')->where('test_parameter_invoicing_parents.tpip_id',$test_parameter_invoicing_parent_id)->first();
+		    $product_category_id 			= !empty($keyTestData[2]) ? $keyTestData[2] : '0';
+		    $p_category_id 				= !empty($keyTestData[3]) ? $keyTestData[3] : '0';
+		    $sub_p_category_id 				= !empty($keyTestData[4]) ? $keyTestData[4] : '0';
+		    $equipment_type_id 				= !empty($keyTestData[5]) ? $keyTestData[5] : '0';
+		    $detector_id 				= !empty($keyTestData[6]) ? $keyTestData[6] : '0';
+		    $running_time_id 				= !empty($keyTestData[7]) ? $keyTestData[7] : '0';
+		    $no_of_per_injection 			= !empty($values['invoicing']['no_of_per_injection']) ? trim($values['invoicing']['no_of_per_injection']) : 0;
+		    if($test_parameter_invoicing_parent_id == 1){
+			$cir_equipment_count			= !empty($values['equipment_count']) && $values['equipment_count'] == '1' ? '1' : '2';
+		    }else{
+			$cir_equipment_count			= !empty($values['equipment_count']) ? $values['equipment_count'] : '0';
+		    }
+		    $total_injection_count			= !empty($values['total_injection_count']) ? array_sum($values['total_injection_count']) : '0';
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			->where('customer_invoicing_rates.cir_p_category_id','=',$p_category_id)
+			->where('customer_invoicing_rates.cir_sub_p_category_id','=',$sub_p_category_id)
+			->where('customer_invoicing_rates.cir_test_parameter_category_id','=',$test_parameter_category_id)
+			->where('customer_invoicing_rates.cir_parameter_id','=',$testParameterInvoicingParentData->test_parameter_id)
+			->where('customer_invoicing_rates.cir_equipment_type_id','=',$equipment_type_id)
+			->where('customer_invoicing_rates.cir_equipment_count','=',$cir_equipment_count)
+			->where('customer_invoicing_rates.cir_detector_id','=',$detector_id)
+			->where('customer_invoicing_rates.cir_running_time_id','=',$running_time_id)
+			->where('customer_invoicing_rates.cir_no_of_injection','=',$no_of_per_injection)
+			->where('customer_invoicing_rates.cir_is_detector','=','1')
+			->first();
+		    $parameterWiseRateData[$nestedkeyWithIds] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate * $total_injection_count : '0';
+		}
+	    }
+	    
+	    //Calculating Rates of Test Parameter Parent Category without Detector,Running Time,no of Injection
+	    if(!empty($withoutDectorsTestParentCategory)){
+		foreach($withoutDectorsTestParentCategory as $nestedkeyWithIds => $values){
+		    $withoutDectorsTestParentCategoryInfo[$nestedkeyWithIds]['equipment_count'] 	= is_array($values) ? count($values) : 0;
+		    $withoutDectorsTestParentCategoryInfo[$nestedkeyWithIds]['total_injection_count'] 	= isset($noOfInjectionWithDectorsCategory[$nestedkeyWithIds]) && is_array($noOfInjectionWithDectorsCategory) ? $noOfInjectionWithDectorsCategory[$nestedkeyWithIds] : 0;
+		    $withoutDectorsTestParentCategoryInfo[$nestedkeyWithIds]['invoicing'] 		= current($values);
+		}		
+		foreach($withoutDectorsTestParentCategoryInfo as $nestedkeyWithIds => $values){
+		    $keyTestData 				= $models->getExplodedData($nestedkeyWithIds,'-');
+		    $test_parameter_category_id 		= !empty($keyTestData[0]) ? $keyTestData[0] : '0';
+		    $test_parameter_invoicing_parent_id 	= !empty($keyTestData[1]) ? $keyTestData[1] : '0';
+		    $testParameterInvoicingParentData 		= DB::table('test_parameter_invoicing_parents')->where('test_parameter_invoicing_parents.tpip_id',$test_parameter_invoicing_parent_id)->first();
+		    $product_category_id 			= !empty($keyTestData[2]) ? $keyTestData[2] : '0';
+		    $p_category_id 				= !empty($keyTestData[3]) ? $keyTestData[3] : '0';
+		    $sub_p_category_id 				= !empty($keyTestData[4]) ? $keyTestData[4] : '0';
+		    $equipment_type_id 				= !empty($keyTestData[5]) ? $keyTestData[5] : '0';
+		    if($test_parameter_invoicing_parent_id == 1){
+			$cir_equipment_count			= !empty($values['equipment_count']) && $values['equipment_count'] == '1' ? '1' : '2';
+		    }else{
+			$cir_equipment_count			= !empty($values['equipment_count']) ? $values['equipment_count'] : '0';
+		    }
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			->where('customer_invoicing_rates.cir_p_category_id','=',$p_category_id)
+			->where('customer_invoicing_rates.cir_sub_p_category_id','=',$sub_p_category_id)
+			->where('customer_invoicing_rates.cir_test_parameter_category_id','=',$test_parameter_category_id)
+			->where('customer_invoicing_rates.cir_parameter_id','=',$testParameterInvoicingParentData->test_parameter_id)
+			->where('customer_invoicing_rates.cir_equipment_type_id','=',$equipment_type_id)
+			->where('customer_invoicing_rates.cir_equipment_count','=',$cir_equipment_count)
+			->where('customer_invoicing_rates.cir_is_detector','=','2')
+			->first();
+		    $parameterWiseRateData[$nestedkeyWithIds] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate : '0';
+		}
+	    }
+
+	    //Calculating Rates of Test Parameter Category without Detector,Running Time,no of Injection
+	    if(!empty($withoutDectorsTestCategory)){
+		foreach($withoutDectorsTestCategory as $key => $values){
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			    ->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			    ->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			    ->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			    ->where('customer_invoicing_rates.cir_parameter_id','=',$values['test_parameter_id'])
+			    ->where('customer_invoicing_rates.cir_equipment_type_id','=',$values['equipment_type_id'])
+			    ->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			    ->first();
+		    $parameterWiseRateData[$values['test_parameter_id']] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate : '0';
+		}
+	    }
+
+	    //Calculating Rates of Assay Parameter Category with Detector,Running Time,no of Injection
+	    if(!empty($withDectorsAssayCategory)){
+		foreach($withDectorsAssayCategory as $nestedkeyWithIds => $values){
+		    $withDectorsAssayCategoryInfo[$nestedkeyWithIds]['equipment_count'] 	= is_array($values) ? count($values) : 0;
+		    $withDectorsAssayCategoryInfo[$nestedkeyWithIds]['total_injection_count'] 	= isset($noOfInjectionWithDectorsCategory[$nestedkeyWithIds]) && is_array($noOfInjectionWithDectorsCategory) ? $noOfInjectionWithDectorsCategory[$nestedkeyWithIds] : 0;
+		    $withDectorsAssayCategoryInfo[$nestedkeyWithIds]['invoicing'] 		= current($values);
+		}
+		foreach($withDectorsAssayCategoryInfo as $nestedkeyWithIds => $values){
+		    $keyAssayData 				= $models->getExplodedData($nestedkeyWithIds,'-');
+		    $test_parameter_category_id 		= !empty($keyAssayData[0]) ? $keyAssayData[0] : '0';
+		    $product_category_id 			= !empty($keyAssayData[1]) ? $keyAssayData[1] : '0';
+		    $p_category_id 				= !empty($keyAssayData[2]) ? $keyAssayData[2] : '0';
+		    $sub_p_category_id 				= !empty($keyAssayData[3]) ? $keyAssayData[3] : '0';
+		    $equipment_type_id 				= !empty($keyAssayData[4]) ? $keyAssayData[4] : '0';
+		    $detector_id 				= !empty($keyAssayData[5]) ? $keyAssayData[5] : '0';
+		    $running_time_id 				= !empty($keyAssayData[6]) ? $keyAssayData[6] : '0';
+		    $no_of_per_injection 			= !empty($values['invoicing']['no_of_per_injection']) ? trim($values['invoicing']['no_of_per_injection']) : 0;
+		    $cir_equipment_count			= !empty($values['equipment_count']) ? $values['equipment_count'] : '0';
+		    $total_injection_count			= !empty($values['total_injection_count']) ? array_sum($values['total_injection_count']) : '0';
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			->where('customer_invoicing_rates.cir_p_category_id','=',$p_category_id)
+			->where('customer_invoicing_rates.cir_sub_p_category_id','=',$sub_p_category_id)
+			->where('customer_invoicing_rates.cir_test_parameter_category_id','=',$test_parameter_category_id)
+			->where('customer_invoicing_rates.cir_equipment_type_id','=',$equipment_type_id)
+			->where('customer_invoicing_rates.cir_equipment_count','=',$cir_equipment_count)
+			->where('customer_invoicing_rates.cir_detector_id','=',$detector_id)
+			->where('customer_invoicing_rates.cir_running_time_id','=',$running_time_id)
+			->where('customer_invoicing_rates.cir_no_of_injection','=',$no_of_per_injection)
+			->where('customer_invoicing_rates.cir_is_detector','=','1')
+			->first();
+		    $parameterWiseRateData[$nestedkeyWithIds] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate * $total_injection_count : '0';
+		}
+	    }
+
+	    //Calculating Rates of Assay Parameter Category without Detector,Running Time,no of Injection
+	    if(!empty($withoutDectorsAssayCategory)){
+		foreach($withoutDectorsAssayCategory as $nestedkeyWithIds => $values){
+		    $withoutDectorsAssayCategoryInfo[$nestedkeyWithIds]['equipment_count'] 	 = is_array($values) ? count($values) : 0;
+		    $withoutDectorsAssayCategoryInfo[$nestedkeyWithIds]['total_injection_count'] = isset($noOfInjectionWithDectorsCategory[$nestedkeyWithIds]) && is_array($noOfInjectionWithDectorsCategory) ? $noOfInjectionWithDectorsCategory[$nestedkeyWithIds] : 0;
+		    $withoutDectorsAssayCategoryInfo[$nestedkeyWithIds]['invoicing'] 		 = current($values);
+		}
+		foreach($withoutDectorsAssayCategoryInfo as $nestedkeyWithIds => $values){
+		    $keyWDAssayData 				= $models->getExplodedData($nestedkeyWithIds,'-');
+		    $test_parameter_category_id 		= !empty($keyWDAssayData[0]) ? $keyWDAssayData[0] : '0';
+		    $product_category_id 			= !empty($keyWDAssayData[1]) ? $keyWDAssayData[1] : '0';
+		    $p_category_id 				= !empty($keyWDAssayData[2]) ? $keyWDAssayData[2] : '0';
+		    $sub_p_category_id 				= !empty($keyWDAssayData[3]) ? $keyWDAssayData[3] : '0';
+		    $equipment_type_id 				= !empty($keyWDAssayData[4]) ? $keyWDAssayData[4] : '0';
+		    $no_of_per_injection 			= !empty($values['invoicing']['no_of_per_injection']) ? trim($values['invoicing']['no_of_per_injection']) : 0;
+		    $cir_equipment_count			= !empty($values['equipment_count']) ? $values['equipment_count'] : '0';
+		    $parameterWiseRate = DB::table('customer_invoicing_rates')
+			->where('customer_invoicing_rates.invoicing_type_id','=',$invoicing_type_id)
+			->where('customer_invoicing_rates.cir_customer_id','=',$customer_id)
+			->where('customer_invoicing_rates.cir_division_id','=',$division_id)
+			->where('customer_invoicing_rates.cir_product_category_id','=',$product_category_id)
+			->where('customer_invoicing_rates.cir_p_category_id','=',$p_category_id)
+			->where('customer_invoicing_rates.cir_sub_p_category_id','=',$sub_p_category_id)
+			->where('customer_invoicing_rates.cir_test_parameter_category_id','=',$test_parameter_category_id)
+			->where('customer_invoicing_rates.cir_equipment_type_id','=',$equipment_type_id)
+			->where('customer_invoicing_rates.cir_equipment_count','=',$cir_equipment_count)
+			->where('customer_invoicing_rates.cir_is_detector','=','2')
+			->first();
+		    $parameterWiseRateData[$nestedkeyWithIds] = !empty($parameterWiseRate->invoicing_rate) ? $parameterWiseRate->invoicing_rate : '0';
+		}
+	    }
+
+	    //echo '<pre>';print_r($parameterWiseRateData);die;
+	    $invoicingRate = in_array('0',$parameterWiseRateData) ? '0' : array_sum($parameterWiseRateData);
+	}
+	return $invoicingRate;
+    }
+
+    /**
+     * Display the specified resource.
+     * Author : Praveen Singh
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function viewOrderDetail($order_id){
+
+        global $order,$models;
+
+        $returnData = $orderList = $rawTestProductStdParaList = $orderParameterList = $generalParameterList = $orderHasClaimValueOrNot = $orderEquipmentDetail = $orderTatInDayDetail = array();
+
+        if($order_id){
+
+	    $user_id                			= defined('USERID') ? USERID : '0';
+	    $equipment_type_ids     			= defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : array();
+	    $role_ids               			= defined('ROLE_IDS') ? ROLE_IDS : '0';
+	    $environmentWaterCategory           	= defined('ENV_WATER_REPORT_CATEGORY') ? explode(',',ENV_WATER_REPORT_CATEGORY) : array();
+	    $orderList              			= $order->getOrder($order_id);
+	    $testProductStdParaList 			= $order->getOrderParameters($order_id);
+	    $orderPerformerRecord   			= $order->getOrderPerformerRecord($order_id);
+	    $microbiologistName     			= defined('MICROBIOLOGIST_NAME') &&  !empty(MICROBIOLOGIST_NAME) ? MICROBIOLOGIST_NAME : '-';
+	    $orderList->testParametersWithSpace 	= defined('TEST_PARAMETERS') && !empty(TEST_PARAMETERS) ? TEST_PARAMETERS : '';
+	    $orderList->assayParametersWithSpace 	= defined('ASSAY_PARAMETERS') && !empty(ASSAY_PARAMETERS) ? ASSAY_PARAMETERS : '';
+	    $orderList->assayParametersWithoutSpace 	= defined('ASSAY_PARAMETERS') && !empty(ASSAY_PARAMETERS) ? strtolower(str_replace(" ","",ASSAY_PARAMETERS)) : '';
+	    $orderList->testParametersWithoutSpace 	= defined('TEST_PARAMETERS') && !empty(TEST_PARAMETERS) ? strtolower(str_replace(" ","", TEST_PARAMETERS)) : '';
+	    $orderList->orderAmendStatus 		= !empty($order->isBookingOrderAmendedOrNot($order_id)) ? '1' : '0' ;
+	    $allowedExceptionParameters 		= array('description','description(cl:3.2.1)','description(cl:3.2)','reference to protocol');
+
+            if(!empty($testProductStdParaList)){
+		foreach($testProductStdParaList as $key => $values){
+		    if(!empty($values->test_parameter_name) && in_array(strtolower($values->test_parameter_name),$allowedExceptionParameters)){
+			if(!empty($values->test_result) && strtolower($values->test_result) != 'n/a'){
+			    $values->description = $values->test_result;
+			}
+		    }
+		    $rawTestProductStdParaList[$values->analysis_id]  = $values;
+		    $orderEquipmentDetail[$values->equipment_type_id] = !empty($values->equipment_name) ? strtolower($values->equipment_name) : '';
+		    $orderTatInDayDetail[$values->time_taken_days] 	  = !empty($values->time_taken_days) ? trim($values->time_taken_days) : '0';
+		}
+            }
+            if(!empty($rawTestProductStdParaList)){
+                foreach($rawTestProductStdParaList as $key => $values){
+		    $models->getRequirementSTDFromTo($values,$values->standard_value_from,$values->standard_value_to);
+		    $orderHasClaimValueOrNot[]							= !empty($values->claim_value) && $values->test_para_cat_name == $orderList->assayParametersWithSpace ? $values->claim_value : '';
+		    $orderParameterList[$values->test_para_cat_id]['categorySortBy']   		= $values->category_sort_by;
+		    $orderParameterList[$values->test_para_cat_id]['categoryId']       		= $values->test_para_cat_id;
+		    $orderParameterList[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+		    $orderParameterList[$values->test_para_cat_id]['categoryParams'][] 	  	= $values;
+                }
+            }
+        }
+
+	$generalParameterListArr = !empty($generalParameterList) ? $models->sortArrayAscOrder(array_values($generalParameterList)) : array();
+	$orderParameterListArr   = !empty($orderParameterList) ? $models->sortArrayAscOrder(array_values($orderParameterList)) : array();
+	$maxTatInDayNumber       = !empty($orderTatInDayDetail) ? max($orderTatInDayDetail) : '0';
+	$totalOrderParameters    = !empty($testProductStdParaList) ? count($testProductStdParaList) : '0';
+
+	if(!empty($orderList) && !empty($orderParameterList)){
+	    $returnData['order']                		= $orderList;
+	    $returnData['order']->hasClaimValue 		= array_filter($orderHasClaimValueOrNot);
+	    $returnData['order']->hasMicrobiologicalEquipment 	= !empty($orderList->report_microbiological_name) ? $orderList->report_microbiological_name : '0';
+	    $returnData['totalOrderParameters']     		= $totalOrderParameters;
+	    $returnData['maxTatInDayNumber']     		= $maxTatInDayNumber;
+	    $returnData['generalParameters']      		= $generalParameterListArr;
+	    $returnData['orderParameters']      		= $orderParameterListArr;
+	    $returnData['orderEquipments']      		= array_filter($orderEquipmentDetail);
+	    $returnData['orderTrackRecord']     		= $orderPerformerRecord;
+	    $returnData                         		= json_decode(json_encode($returnData),true);
+	}
+
+	//echo '<pre>';print_r($returnData);die;
+        return $returnData;
+    }
+
+    /**
+     * Display the specified resource.
+     * Author : Praveen Singh
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function viewReportDetail($order_id){
+
+        global $order,$models,$report;
+
+        $returnData = $orderList = $rawTestProductStdParaList = $orderParameterList = $generalParameterList = $orderHasClaimValueOrNot = $orderEquipmentDetail = $orderTatInDayDetail = $checkReportQuality = array();
+
+        if($order_id){
+
+	    $user_id                			= defined('USERID') ? USERID : '0';
+	    $equipment_type_ids     			= defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : array();
+	    $role_ids               			= defined('ROLE_IDS') ? ROLE_IDS : '0';
+	    $environmentWaterCategory     		= defined('ENV_WATER_REPORT_CATEGORY') ? explode(',',ENV_WATER_REPORT_CATEGORY) : array();
+	    $orderList              			= $order->getOrder($order_id);
+	    $testProductStdParaList 			= $order->getOrderParameters($order_id);
+	    $orderPerformerRecord   			= $order->getOrderPerformerRecord($order_id);
+	    $checkReportQuality           		= $report->getStandardQualityStampOrNot($orderList);
+	    $microbiologistName     			= defined('MICROBIOLOGIST_NAME') &&  !empty(MICROBIOLOGIST_NAME) ? MICROBIOLOGIST_NAME : '-';
+	    $orderList->testParametersWithSpace 	= defined('TEST_PARAMETERS') && !empty(TEST_PARAMETERS) ? TEST_PARAMETERS : '';
+	    $orderList->assayParametersWithSpace 	= defined('ASSAY_PARAMETERS') && !empty(ASSAY_PARAMETERS) ? ASSAY_PARAMETERS : '';
+	    $orderList->assayParametersWithoutSpace 	= defined('ASSAY_PARAMETERS') && !empty(ASSAY_PARAMETERS) ? strtolower(str_replace(" ","",ASSAY_PARAMETERS)) : '';
+	    $orderList->testParametersWithoutSpace 	= defined('TEST_PARAMETERS') && !empty(TEST_PARAMETERS) ? strtolower(str_replace(" ","", TEST_PARAMETERS)) : '';
+	    $orderList->orderAmendStatus 		= !empty($order->isBookingOrderAmendedOrNot($order_id)) ? '1' : '0' ;
+	    $allowedExceptionParameters 		= array('description','description(cl:3.2.1)','description(cl:3.2)','reference to protocol');
+
+            if(!empty($testProductStdParaList)){
+		foreach($testProductStdParaList as $key => $values){
+		    if(!empty($values->test_parameter_name) && in_array(strtolower($values->test_parameter_name),$allowedExceptionParameters)){
+			if(!empty($values->test_result) && strtolower($values->test_result) != 'n/a'){
+			    $values->description = $values->test_result;
+			}
+		    }
+		    $rawTestProductStdParaList[$values->analysis_id]  = $values;
+		    $orderEquipmentDetail[$values->equipment_type_id] = !empty($values->equipment_name) ? strtolower($values->equipment_name) : '';
+		    $orderTatInDayDetail[$values->time_taken_days] 	  = !empty($values->time_taken_days) ? trim($values->time_taken_days) : '0';
+		}
+            }
+            if(!empty($rawTestProductStdParaList)){
+                foreach($rawTestProductStdParaList as $key => $values){
+		    $models->getRequirementSTDFromTo($values,$values->standard_value_from,$values->standard_value_to);
+		    $orderHasClaimValueOrNot[]	= !empty($values->claim_value) && $values->test_para_cat_name == $orderList->assayParametersWithSpace ? $values->claim_value : '';
+		    if(!empty($environmentWaterCategory) && in_array($values->test_para_cat_id,$environmentWaterCategory)){ 	//In Case of Category(General Information and Observation) In Environment Department
+			$generalParameterList[$values->test_para_cat_id]['categorySortBy']   		= $values->category_sort_by;
+			$generalParameterList[$values->test_para_cat_id]['categoryId']       		= $values->test_para_cat_id;
+			$generalParameterList[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+			$generalParameterList[$values->test_para_cat_id]['categoryParams'][] 		= $values;
+		    }else{
+			$orderParameterList[$values->test_para_cat_id]['categorySortBy']   		= $values->category_sort_by;
+			$orderParameterList[$values->test_para_cat_id]['categoryId']       		= $values->test_para_cat_id;
+			$orderParameterList[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+			$orderParameterList[$values->test_para_cat_id]['categoryParams'][] 	  	= $values;
+		    }
+                }
+            }
+        }
+
+	$generalParameterListArr = !empty($generalParameterList) ? $models->sortArrayAscOrder(array_values($generalParameterList)) : array();
+	$orderParameterListArr   = !empty($orderParameterList) ? $models->sortArrayAscOrder(array_values($orderParameterList)) : array();
+	$maxTatInDayNumber       = !empty($orderTatInDayDetail) ? max($orderTatInDayDetail) : '0';
+	$totalOrderParameters    = !empty($testProductStdParaList) ? count($testProductStdParaList) : '0';
+
+	if(!empty($orderList) && !empty($orderParameterList)){
+	    $returnData['order']                		= $orderList;
+	    $returnData['order']->hasClaimValue 		= array_filter($orderHasClaimValueOrNot);
+	    $returnData['order']->hasMicrobiologicalEquipment 	= !empty($orderList->report_microbiological_name) ? $orderList->report_microbiological_name : '0';
+	    $returnData['totalOrderParameters']     		= $totalOrderParameters;
+	    $returnData['maxTatInDayNumber']     		= $maxTatInDayNumber;
+	    $returnData['generalParameters']      		= $generalParameterListArr;
+	    $returnData['orderParameters']      		= $orderParameterListArr;
+	    $returnData['orderEquipments']      		= array_filter($orderEquipmentDetail);
+	    $returnData['orderTrackRecord']     		= $orderPerformerRecord;
+	    $returnData['quality']                  		= $checkReportQuality;
+	    $returnData                         		= json_decode(json_encode($returnData),true);
+	}
+
+	//echo '<pre>';print_r($returnData);die;
+        return $returnData;
+    }
+
+    /**
+    * Create And Update Header Note
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function createAndUpdateHeaderNote($headerNote){
+
+	$dataSave		   = array();
+	$dataSave['header_name']   = $headerNote;
+	$dataSave['header_status'] = '1';
+	$dataSave['created_by']    = USERID;
+
+	$data = DB::table('order_header_notes')->where('order_header_notes.header_name','=',$headerNote)->first();
+	if(!empty($data->header_name)){
+	    return $data->header_name;
+	}else{
+	    DB::table('order_header_notes')->insertGetId($dataSave);
+	    return $headerNote;
+	}
+    }
+
+    /**
+    * Create And Update Stability Note
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function createAndUpdateStabilityNote($stabilityNote){
+
+	$dataSave		      = array();
+	$dataSave['stability_name']   = $stabilityNote;
+	$dataSave['stability_status'] = '1';
+	$dataSave['created_by']       = USERID;
+
+	$data = DB::table('order_stability_notes')->where('order_stability_notes.stability_name','=',$stabilityNote)->first();
+	if(!empty($data->stability_name)){
+	    return $data->stability_name;
+	}else{
+	    DB::table('order_stability_notes')->insertGetId($dataSave);
+	    return $stabilityNote;
+
+	}
+    }
+
+    /**
+    * check Booking And Sample Receiving Date
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function checkBookingAndSampleReceivingDate($orderDate,$sampleId){
+	if(!empty($orderDate) && !empty($sampleId)){
+	    $sampleData = DB::table('samples')->where('samples.sample_id',$sampleId)->first();
+	    if(!empty($sampleData->sample_date)){
+		$orderDate  = date('Y-m-d',strtotime($orderDate));
+		$sampleDate = date('Y-m-d',strtotime($sampleData->sample_date));
+		if(strtotime($orderDate) >= strtotime($sampleDate)){
+		    return true;
+		}
+	    }
+	}
+	return false;
+    }
+
+    /**
+    * check Booking And Sample Receiving Date
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function checkBookingAndSamplingDate($orderDate,$samplingDate){
+	if(strtotime($samplingDate) <= strtotime($orderDate)){
+	    return true;
+	}else{
+	    return false;
+	}
+    }
+
+    /**
+    * check Booking And Sample Receiving Date
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function getOrderDate($orderId){
+	$orderDate = DB::table('order_master')->where('order_master.order_id',$orderId)->first();
+	return !empty($orderDate)?$orderDate->order_date:'0';
+    }
+
+    /**
+    * Checking Sample Receiving Category and Test product Category
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    function checkSampleAndTestProductCategory($sampleId,$productCategoryId){
+	$sampleData = DB::table('samples')->where('samples.sample_id',$sampleId)->where('samples.product_category_id',$productCategoryId)->first();
+	return !empty($sampleData) ? true : false;
+    }
+
+    /**
+    * Checking Sample Receiving Category and Test product Category
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    function getOrderPerformerRecord($orderId){
+	$returnData = array();
+	$orderLogList = DB::table('order_process_log')
+		    ->join('order_master','order_master.order_id','order_process_log.opl_order_id')
+		    ->where('order_process_log.opl_order_id',$orderId)
+		    ->where('order_process_log.opl_amend_status','0')
+		    ->whereNotNull('order_process_log.opl_order_id')
+		    ->groupBy('order_process_log.opl_order_status_id')
+		    ->orderBy('order_process_log.opl_order_status_id','ASC')
+		    ->get();
+	if(!empty($orderLogList)){
+	    foreach($orderLogList as $key => $values){
+		$orderLog = DB::table('order_process_log')
+		    ->join('order_master','order_master.order_id','order_process_log.opl_order_id')
+		    ->join('order_status','order_status.order_status_id','order_process_log.opl_order_status_id')
+		    ->join('users as oplUser','oplUser.id','order_process_log.opl_user_id')
+		    ->join('users as bookingUser','bookingUser.id','order_master.created_by')
+		    ->select('order_process_log.*','oplUser.name as oplUsername','oplUser.user_signature as opl_user_signature','bookingUser.name as bookingUserName','bookingUser.user_signature as booking_user_signature','order_status.order_status_name','oplUser.user_signature','order_process_log.opl_date as view_date')
+		    ->where('opl_order_id',$values->opl_order_id)
+		    ->where('opl_order_status_id',$values->opl_order_status_id)
+		    ->orderBy('opl_id','DESC')
+		    ->first();
+
+		if(!empty($orderLog)){
+		    if($orderLog->opl_order_status_id == '1')$orderLog->oplUsername   	    	= $orderLog->bookingUserName;
+		    if($orderLog->opl_order_status_id == '1')$orderLog->opl_user_signature  	= $orderLog->booking_user_signature;
+		    if($orderLog->opl_order_status_id == '7')$orderLog->order_status_name   	= 'approving';
+		    $returnData[strtolower($orderLog->order_status_name)]['user_id']        	= $orderLog->opl_user_id;
+		    $returnData[strtolower($orderLog->order_status_name)]['username']       	= $orderLog->oplUsername;
+		    $returnData[strtolower($orderLog->order_status_name)]['status_name']    	= $orderLog->order_status_name;
+		    $returnData[strtolower($orderLog->order_status_name)]['user_signature'] 	= $orderLog->opl_user_signature;
+		    $returnData[strtolower($orderLog->order_status_name)]['report_view_date'] 	= date('d-m-Y',strtotime($orderLog->view_date));
+		}
+	    }
+	}
+	return $returnData;
+    }
+
+    /**
+    * function to update smaple name on editing a order
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function updateAliaOnUpdateOrderSampleName($orderId,$submitedRawData) {
+
+	//parsing the raw form data
+	parse_str($submitedRawData, $submitedData);
+
+	if(!empty($submitedData['sample_description'])){
+	    $orderData 		   = DB::table('order_master')->select('order_master.order_id','order_master.product_id')->where('order_master.order_id','=',$orderId)->first();
+	    $sampleDescriptionData = DB::table('product_master_alias')->where('product_master_alias.c_product_name','=',trim($submitedData['sample_description']))->where('product_master_alias.product_id','=',trim($orderData->product_id))->first();
+	    if(!empty($sampleDescriptionData)){
+		return $sampleDescriptionData->c_product_id;
+	    }else{
+		$dataSave			= array();
+		$dataSave['c_product_name'] 	= trim($submitedData['sample_description']);
+		$dataSave['product_id'] 	= $orderData->product_id;
+		$dataSave['created_by'] 	= USERID;
+		$dataSave['view_type'] 		= '1';
+		$dataSave['c_product_status'] 	= '1';
+		return DB::table('product_master_alias')->insertGetId($dataSave);
+	    }
+	}
+    }
+
+    /*************************
+    *function to update smaple name
+    * on editing a report(on reviewer end)
+    *************************/
+    public function updateAliaOnEditReportSampleName($orderId,$submitedData) {
+
+	$dataSave			= array();
+	$dataSave['c_product_name'] 	= trim($submitedData);
+
+	$getSampleId = DB::table('order_master')->where('order_id','=',$orderId)->select('order_master.sample_description_id')->first();
+	$sample_id = !empty($getSampleId) ? $getSampleId->sample_description_id : '';
+
+	$data = DB::table('product_master_alias')->where('product_master_alias.c_product_name','=',$submitedData)->first();
+	if(empty($data)){
+	    $updeAliasName = DB::table('product_master_alias')->where('product_master_alias.c_product_id','=',$sample_id)->update(['c_product_name'=>$dataSave['c_product_name']]);
+	    return $sample_id;
+	}else{
+	    return $data->c_product_id;
+	}
+
+    }
+
+    /*********************
+    * function to get last stage of order before hold
+    * @param  int  $id(19-Jan-2018)
+    * @return \Illuminate\Http\Response
+    ***********************/
+    public function getLastOrderStage($order_id){
+	$data = DB::table('order_process_log')
+	    ->where('order_process_log.opl_order_id',$order_id)
+	    ->where('order_process_log.opl_order_status_id','<>','12')
+	    ->where('order_process_log.opl_amend_status','=','0')
+	    ->orderBy('order_process_log.opl_id','DESC')
+	    ->first();
+	return !empty($data->opl_order_status_id) ? $data->opl_order_status_id : '1' ;
+    }
+
+    /*********************
+    * function to get last stage of order before hold
+    * @param  int  $id(19-Jan-2018)
+    * @return \Illuminate\Http\Response
+    ***********************/
+    public function checkUpdateSampleReceivingCustomer($customerId,$orderId){
+	$data = DB::table('order_master')->where('order_master.order_id','=',$orderId)->where('order_master.customer_id','=',$customerId)->first();
+	if(empty($data)){
+	    $orderData = DB::table('order_master')->where('order_master.order_id','=',$orderId)->first();
+	    if(!empty($orderData->sample_id)){
+		$hasMultipleBooking = DB::table('order_master')->where('order_master.sample_id','=',$orderData->sample_id)->count();
+		if($hasMultipleBooking == '1'){
+		    DB::table('samples')->where('samples.sample_id','=',$orderData->sample_id)->update(['samples.customer_id'=>$customerId]);
+		    return true;
+		}else{
+		    return false;
+		}
+	    }
+	}else{
+	    return true;
+	}
+    }
+
+    /**
+    * check is Booking Order Amended Or Not
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function isBookingOrderAmendedOrNot($orderId){
+	if(!empty($orderId)){	    
+	    return DB::table('order_process_log')
+		->where('order_process_log.opl_order_id', '=', $orderId)
+		->where('order_process_log.opl_amend_status','1')
+		->first();
+	}else{
+	    return false;
+	}
+    }
+
+    /**
+     *05-05-2018
+     *function to check invoice generated or not .
+     *while editing order(not to add parameters once order invoice is generated)
+     */
+    public function invoiceNumberGenerated($order_id){
+	if($order_id){
+	    return DB::table('invoice_hdr_detail')->where('invoice_hdr_detail.order_id','=',$order_id)->first();    
+	}else{
+	    return false;
+	}
+	
+    }
+    
+    /**
+    * check is Booking Order Amended Or Not
+    * Author : Praveen Singh
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    */
+    public function verifyBookingOrderAmendedOrNot($orderId){
+	if(!empty($orderId)){	    
+	    $amendStatus = DB::table('order_process_log')
+		->where('order_process_log.opl_order_id', '=', $orderId)
+		->where('order_process_log.opl_amend_status','1')
+		->first();
+		    
+	    $amendedWithInvoiceStatus =  DB::table('order_process_log')
+		->where('order_process_log.opl_order_id', '=', $orderId)
+		->where('order_process_log.opl_order_status_id','8')
+		->whereNotNull('order_process_log.opl_user_id')
+		->first();
+		
+	    if(empty($amendedWithInvoiceStatus) && !empty($amendStatus)){
+		return $amendStatus;
+	    }
+	}else{
+	    return false;
+	}
+    }
+    
+    /***********************************************
+    *function to Check the Order is cancelled Or Not
+    *Created On :28-May-2018
+    *Created By:Praveen-Singh
+    **********************************************/
+    public function hasOrderCancelled($orderId){
+	return DB::table('order_master')->where('order_master.order_id','=',$orderId)->where('order_master.status','10')->first();
+    }
+    
+    /***********************************************
+    *function to Check the Order is Inter-laboratory Or Compensatory Or Not
+    *Created On :28-May-2018
+    *Created By:Praveen-Singh
+    **********************************************/
+    public function hasOrderInterLabOrCompensatory($orderId){
+	return DB::table('order_master')->where('order_master.order_id','=',$orderId)->whereIn('order_master.order_sample_type',array('1','2'))->first();
+    }
+    
+    /*****************************************************
+    * Function : Updating Sample Receiving Customer_id ID if User changes the Customer Name of Booked Order
+    * Created On :01-June-2018
+    * Created By:Praveen-Singh
+    ******************************************************/
+    public function updateCustomerDetailInSamplesAOrderMaster($submitedData,$orderId){
+	$data = DB::table('order_master')->where('order_master.order_id','=',$orderId)->where('order_master.customer_id','=',$submitedData['customer_id'])->first();
+	if(empty($data)){
+	    $orderData = DB::table('order_master')->select('order_master.order_id','order_master.sample_id','order_master.customer_id')->where('order_master.order_id','=',$orderId)->first();
+	    if(!empty($orderData->sample_id)){
+		$allOrderBooking = DB::table('order_master')->select('order_master.order_id','order_master.sample_id','order_master.customer_id')->where('order_master.sample_id','=',$orderData->sample_id)->get();
+		if(!empty($allOrderBooking)){
+		    
+		    //Updating Customer Name in Sample Table
+		    DB::table('samples')->where('samples.sample_id','=',$orderData->sample_id)->update(['samples.customer_id'=>$submitedData['customer_id']]);
+		    
+		    $dataUpdate = array(
+			'order_master.customer_id' 	=> $submitedData['customer_id'],
+			'order_master.customer_city'	=> $submitedData['customer_city'],
+			'order_master.mfg_lic_no' 	=> $submitedData['mfg_lic_no'],
+			'order_master.sale_executive'	=> $submitedData['sale_executive'],
+			'order_master.discount_type_id'	=> $submitedData['discount_type_id'],
+			'order_master.discount_value'	=> $submitedData['discount_value'],
+			'order_master.invoicing_type_id'=> $submitedData['invoicing_type_id'],
+			'order_master.billing_type_id'	=> $submitedData['billing_type_id'],
+		    );
+		    
+		    //Updating Customer Detail in Order Master
+		    foreach($allOrderBooking as $OrderBooking){
+			DB::table('order_master')->where('order_id','=',$OrderBooking->order_id)->update($dataUpdate);
+		    }		    
+		    return true;
+		}
+	    }
+	}
+	return true;
+    }
+    
+    /**
+     *02-June-2018
+     *function to check invoice generated or not .
+     *while editing order(not to add parameters once order invoice is generated)
+     */
+    public function isOrderInvoiceGenerated($order_id){
+	return DB::table('invoice_hdr_detail')->where('invoice_hdr_detail.order_id','=',$order_id)->first();    
+    }
+    
+    /*************************
+    *function to get Report header and footer on pdf's
+    *Date : 11-06-2018
+    *Created By:Praveen Singh
+    *************************/
+    public function getDynamicHeaderFooterTemplate($template_type_id,$division_id,$product_category_id){	
+	$data = DB::table('template_dtl')
+		->select('template_dtl.header_content','template_dtl.footer_content')
+		->where('template_dtl.template_type_id','=',$template_type_id)
+		->where('template_dtl.division_id','=',$division_id)
+		->where('template_dtl.product_category_id','=',$product_category_id)
+		->where('template_dtl.template_status_id','=','1')
+		->first();
+	return !empty($data->header_content) && !empty($data->footer_content) ? array($data->header_content,$data->footer_content) : array(0,0);
+    }
+
+}

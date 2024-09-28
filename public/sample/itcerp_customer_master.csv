@@ -1,0 +1,10 @@
+customer_code,customer_name,customer_email,customer_mobile,customer_address,customer_state,customer_city,customer_type,billing_type,sale_executive,discount_type,discount_value,customer_vat_cst,contact_name1,contact_email1,mfg_lic_no,customer_tan_no,bank_name
+CUST0CSV001,Kapil Sharma,customer006@itclabs.com,9988998904,"Panchkulla,Harayana,160114",PN,PKL01,private emp,regular,drish.emp@itclab.com,percentage,15,VATCST006,Mrs Deepika,deepika@itcerp.com,MFCLICNO6,TANNO006,HDFC
+CUST0CSV002,Bhupinder Kumar,customer007@itclabs.com,9988998905,"Panchkulla,Harayana,160115",PN,PKL01,government,daily,salesExexuctive1@gmail.com,no discount,,VATCST007,Mrs Pooja,pooja@itcerp.com,MFCLICNO7,TANNO007,HDFC
+CUST0CSV003,Nisha Sharma,customer008@itclabs.com,9988998906,"Panchkulla,Harayana,160116",PN,PKL01,private,monthly,drish.emp@itclab.com,nodiscount,,VATCST008,Mrs Pooja,deepika@itcerp.com,MFCLICNO8,TANNO008,PNB
+CUST0CSV004,Kiran Sharma,customer009@itclabs.com,9988998907,"Panchkulla,Harayana,160117",PN,PKL01,government,monthly,drish.emp@itclab.com,amount,,VATCST009,Mrs Pooja,deepika@itcerp.com,MFCLICNO9,TANNO009,HDFC
+CUST0CSV005,Nisha Sharma,customer010@itclabs.com,9988998908,"Panchkulla,Harayana,160117",PN,PKL01,government,regular,drish.emp@itclab.com,percentage,500,VATCST010,Mrs Pooja,deepika@itcerp.com,MFCLICNO10,TANNO010,HDFC
+CUST0CSV006,Ruby Drish,customer010@itclabs.com,9988998909,"Panchkulla,Harayana,160118",PN,PKL01,private,daily,Alexander@gmail.com,amount,200,VATCST011,Mrs Pooja,deepika@itcerp.com,MFCLICNO11,TANNO011,HDFC
+CUST0CSV007,Amita Drish,customer011@itclabs.com,9988998909,"Panchkulla,Harayana,160118",PN,PKL01,private,yealry,Alexander@gmail.com,amount,200,VATCST011,Mrs Pooja,deepika@itcerp.com,MFCLICNO11,TANNO011,HDFC
+CUST0CSV008,Komal Drish,customer012@itclabs.com,9988998910,"Panchkulla,Harayana,160118",PN,PKL01,private,weekly,Alexander@gmail.com,amount,200,VATCST011,Mrs Pooja,deepika@itcerp.com,MFCLICNO11,TANNO011,HDFC
+CUST0CSV009,Hina Drish,customer013@itclabs.com,9988998911,"Panchkulla,Harayana,160118",PN,PKL01,private,regular,Alexander@gmail.com,percentage,2,VATCST011,Mrs Pooja,deepika@itcerp.com,MFCLICNO11,TANNO011,HDFC

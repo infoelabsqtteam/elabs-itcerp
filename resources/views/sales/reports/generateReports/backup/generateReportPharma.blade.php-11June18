@@ -1,0 +1,403 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+   <style>
+   .page-break-always{ page-break-after: always;}
+   .page-break-auto{ page-break-after:auto;}
+   @page { margin: 135px 20px 125px 20px;font-size:13px;}
+   #header {left: 0;position: fixed;right: 0;text-align: center;top: -130px;width: 100%;height:auto;}
+   #footer {left: 0;position: fixed;right: 0;bottom:0px;width: 100%;height:auto;}
+   #content {bottom: 0;height: auto;left: 0;right: 0;width: 100%;}
+   #footer .page:after { content: counter(page, upper-roman); }
+   td table td {padding:1px!important;border-bottom: 0px!important;}
+   p{padding:2px 0px !important;margin:0!important;}
+   .sno{width:6%!important;font-size:12px!important;padding:5px 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .category{font-size:14px!important;padding:0 5px!important;font-weight:bold;overflow-wrap: break-word;word-wrap: break-word;}
+   .parameter{width:40%!important;font-size:13px!important;padding:0 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .methodName{width:15%!important;font-size:13px!important;padding:0 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .equipmentName{width:15%!important;font-size:13px!important;padding:0 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .requirementName{width:15%!important;font-size:13px!important;padding:0 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .testResult{width:15%!important;font-size:13px!important;padding:0 5px!important;overflow-wrap: break-word;word-wrap: break-word;}
+   .pdftable{table-layout:fixed;border-collapse: collapse;background: #fff;}
+   .pdftable tr td {text-overflow:ellipsis;overflow:hidden;white-space:wrap;padding:3px 2px!important;}
+   .header-content table,footer-content table{border-collapse:collapse;}
+   .left-content{border: 0px none ! important; vertical-align: top;}
+   .middle-content{color:#4d64a1;border:0px !important;text-align:center!important;}
+   .middle-content h3{font-family: times of romen; font-weight: 600; color: rgb(77, 100, 161); margin: 0px; font-size: 30px !important;}
+   .right-content{border: 0px none ! important; color: #d7563a; vertical-align: top; padding: 5px; text-align: center ! important; font-size: 12px ! important;}
+   .footer-content h3 {font-family: times of romen; font-weight: 600; color:#4d64a1;margin: 0px; font-size: 15px !important;padding: 0 !important;}
+   .footer-content p,h5 {font-size:11px !important;margin:0 !important;padding: 0 !important;}
+   .footer-content ul {margin: 0 !important;padding: 0 !important;}
+   .footer-content ul li {font-size: 11px !important;margin-top: 0px !important;padding: 0 !important;}
+   .rightSection{display:none;}
+   </style>
+</head>
+
+<!--- header-->
+<div id="header">
+
+   <div class="header-content"@if(!empty($hasContainHeaderFooter) && $hasContainHeaderFooter == '3') style="visibility: hidden;"@endif>
+      <?php echo !empty($viewData['order']['header_content']) ? htmlspecialchars_decode($viewData['order']['header_content']) : '';?>
+   </div>
+	
+   <table width="100%" style="border-collapse:collapse;">
+      <tr>
+	 <td colspan="6">
+	    <table width="100%" style="margin-bottom:5px;">
+	       <tr>
+		  <td width="33.3%" align="left"><b style="font-size: 12px; border: 1px solid; display: block; vertical-align: middle; text-align: center ! important; width: 220px; padding: 2px;">NABL Certificate No.: T-0482 /T-1567<b></td>
+		  <td width="33.3%" align="center">
+		     <b style="display:block; background: rgb(138, 47, 48);margin:auto; color: rgb(255, 255, 255); font-size: 15px; width: 150px;">
+		     Test Report
+		     @if(!empty($hasContainHeaderFooter) && $hasContainHeaderFooter == '2')
+		     (DRAFT)
+		     @endif
+		     </b>
+		  </td>
+		  <td width="33.3%" align="right"><b style="vertical-align: middle;">[Lic. No. Lab-3D(1)88]</b></td>
+	       </tr>
+	    </table>
+	 </td>
+      </tr>
+   </table>
+</div>
+<!--- header end-->
+
+<!--- footer start-->
+<div id="footer" class="footer-content">
+
+      <table valign="bottom" width="100%" style="margin:0 auto;border-collapse:collapse;">
+	 <tr>
+	    <td align="center" colspan="6" style="margin-top: 0px!important;">
+	       <b style="text-align:center;">
+	       <script type='text/php'>
+		  if(isset($pdf)){
+		     $font = $fontMetrics->get_font('serif','bold');
+		     $size = 11;
+		     $y    = $pdf->get_height() - 25;
+		     $x    = $pdf->get_width() - 305 - $fontMetrics->get_text_width('1/1', $font, $size);
+		     $pdf->page_text($x, $y, 'Page {PAGE_NUM} of {PAGE_COUNT}', $font, $size);
+		  }
+	       </script>
+	       </b>
+	    </td>
+	 </tr>
+      </table>
+      
+      <div @if(!empty($hasContainHeaderFooter) && $hasContainHeaderFooter == '3')style="visibility:hidden;"@endif>
+	 <?php echo !empty($viewData['order']['footer_content']) ? htmlspecialchars_decode($viewData['order']['footer_content']) : '';?>
+      </div>
+</div>
+<!--- footer start-->
+
+<body>
+   <!--content-->
+   <div id="content">
+      <div class="page-break-auto">
+	 <table border="1" width="100%" class="pdftable" style="margin:0 auto;border-collapse:collapse;">
+	    <tbody>       
+	       <tr>
+		  <td style="padding:0px;" width="100%" align="left" colspan="3"><b style="display: inline-block;vertical-align: middle;width: 100px;">Sample Name</b><b>:</b><b>{{!empty($viewData['order']['sample_description']) ? $viewData['order']['sample_description'] : ''}}</b></td>
+		  <!--<td style="padding:0px;"><b style="display: inline-block;vertical-align: middle;width: 88px;">Report No.</b><b>:</b>{{!empty($viewData['order']['report_no']) ? $viewData['order']['report_no'] : ''}}{{ !empty($viewData['order']['is_amended_no']) ? ' - '.$viewData['order']['is_amended_no'] : '' }}</td>-->
+	       </tr>
+		     
+	       <tr>
+		  <td style="padding:0px;" align="left" colspan="2" width="50%"><b style="display: inline-block;vertical-align: middle;vertical-align: middle;width: 100px;">Supplied By</b><b>:</b>{{!empty($viewData['order']['supplied_by']) ? $viewData['order']['supplied_by'] : '' }}</td>
+		  <td style="padding:0px;"><b style="display: inline-block;vertical-align: middle;width: 88px;">Report No.</b><b>:</b>{{!empty($viewData['order']['order_no']) ?  $viewData['order']['order_no'] : ''}}{{ !empty($viewData['order']['is_amended_no']) ? '-'.$viewData['order']['is_amended_no'] : '' }}</td>
+	       </tr>
+      
+	       <tr>
+		  <td style="padding:0px;" align="left" colspan="2" width="50%"><b style="display: inline-block;vertical-align: middle;width: 100px;">Manufactured By</b><b>:</b>{{!empty($viewData['order']['manufactured_by']) ?  $viewData['order']['manufactured_by'] : ''}}</td>
+		  <td style="padding:0px;"><b style="display: inline-block;vertical-align: middle;width: 88px;">Party Ref. Date</b><b>:</b>{{!empty($viewData['order']['letter_no']) ?  $viewData['order']['letter_no'] : ''}}</td>
+	       </tr>
+		  
+	       <tr>
+		  <td style="padding:0px;" align="left" colspan="2" width="50%"><b style="display: inline-block;vertical-align: middle;width: 100px;">Submitted By</b><b>:</b>{{!empty($viewData['order']['customer_name']) ? $viewData['order']['customer_name'] : ''}}{{!empty($viewData['order']['city_name']) ? '-'.$viewData['order']['city_name'] : ''}} ( {{!empty($viewData['order']['state_name']) ? $viewData['order']['state_name'] : ''}} ) </td>
+		  <td style="padding:0px;"><b style="display: inline-block;vertical-align: middle;width: 88px;">Booking Date</b><b>:</b>{{!empty($viewData['order']['order_date']) ?  date(DATEFORMAT,strtotime($viewData['order']['order_date'])) :''}}</td>
+	       </tr>
+		  
+	       <tr>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 100px;">Mfg. Lic. No.</b><b>:</b>{{!empty($viewData['order']['mfg_lic_no']) ? $viewData['order']['mfg_lic_no'] : ''}}</td>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 60px;">Batch No.</b><b>:</b>{{!empty($viewData['order']['batch_no']) ?  $viewData['order']['batch_no'] : ''}} </td>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 88px;">Batch Size</b><b>:</b>{{!empty($viewData['order']['batch_size']) ? $viewData['order']['batch_size'] :'' }}</td>
+	       </tr>
+      
+	       <tr>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 100px;">D/M</b><b>:</b>{{!empty($viewData['order']['mfg_date']) ? $viewData['order']['mfg_date'] : '-'}}</td>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 60px;">D/E</b><b>:</b>{{!empty($viewData['order']['expiry_date']) ? $viewData['order']['expiry_date'] : '-'}}</td>
+		  <td align="left" style="padding:0px;" width="33.3%"><b style="display: inline-block;vertical-align: middle;width: 88px;">Sample Qty</b><b>:</b>{{!empty($viewData['order']['sample_qty']) ? $viewData['order']['sample_qty'] : ''}}</td>
+	       </tr>
+      
+	       <tr>
+		  <?php
+		  if(!empty($viewData['orderTrackRecord']['reviewing']['report_view_date'])){
+		     $viewDate = date('d-m-Y',strtotime($viewData['orderTrackRecord']['reviewing']['report_view_date']));
+		  }else if(!empty($viewData['orderTrackRecord']['finalizing']['report_view_date'])){
+		     $viewDate = date('d-m-Y',strtotime($viewData['orderTrackRecord']['finalizing']['report_view_date']));
+		  }
+		  ?>		  
+		  <td align="right" colspan="3" style="padding:0px;" width="100%" style="padding:0px;margin:0px;font-weight:bold;"><b>Date of completion of analysis : {{!empty($viewData['order']['orderAmendStatus'])  && !empty($viewData['order']['is_amended_no']) ? $viewDate :  date(DATEFORMAT,strtotime($viewData['order']['report_date']))}}</b></td>
+	       </tr>
+	       
+	       @if(!empty($viewData['order']['stability_note']))
+	       <tr>
+		  <td align="center" colspan="2" width="100%"><b>{{!empty($viewData['order']['stability_note']) ? $viewData['order']['stability_note'] : '-'}}</b></td>
+	       </tr>		     
+	       @endif
+	    </tbody>
+	 </table>
+	 
+	 <!--Test Parameters Category-->
+	 @if(!empty($viewData['orderParameters']))
+	    <table border="1" width="100%" class="pdftable" style="margin:0 auto;border-collapse:collapse;margin-top:5px!important;">
+	       <tbody>	       
+		  @foreach($viewData['orderParameters'] as $paramKey => $orderParametersCategoryName)
+		     @if(strtolower($orderParametersCategoryName['categoryName']) == strtolower($viewData['order']['testParametersWithSpace']))
+			<tr>
+			   <th align="left" width="40%">{{strtoupper($orderParametersCategoryName['categoryName'])}}</th>
+			   @if(!empty($hasContainEquipment))
+			   <th align="center">Equipment</th>
+			   @endif
+			   <th align="center">RESULT</th>
+			   <th align="center">LIMIT</th>
+			</tr>		     		     
+			@foreach($orderParametersCategoryName['categoryParams'] as $key => $orderParametersCategoryParams)
+			   <tr>
+			      <td class="parameter" width="40%" align="left"><?php echo trim($orderParametersCategoryParams['test_parameter_name']);?></td>
+			      @if(empty($orderParametersCategoryParams['description']))
+				 @if(!empty($hasContainEquipment))
+				    <td class="equipmentName" align="center">{{!empty($orderParametersCategoryParams['equipment_name']) ? $orderParametersCategoryParams['equipment_name'] : ''}}</td>
+				 @endif
+				 <td class="testResult" align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+				 <td class="requirementName" align="center">
+				    {{!empty($orderParametersCategoryParams['requirement_from_to']) ? trim($orderParametersCategoryParams['requirement_from_to']) : ''}}
+				    &nbsp;
+				    {{!empty($orderParametersCategoryParams['claim_value_unit']) ? strtoupper($orderParametersCategoryParams['claim_value_unit']) : ''}}
+				 </td>
+			      @else
+				 <td class="testResult"
+				    @if(!empty($hasContainEquipment))
+				       colspan="3"
+				    @else
+				       colspan="2"
+				    @endif
+				 align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+			      @endif
+			   </tr>
+			@endforeach
+		     @endif
+		  @endforeach	              
+	       </tbody>
+	    </table>
+	 @endif	
+	 <!--/Test Parameters Category-->
+	 
+	 <!--Assay Parameters Category-->
+	 @if(!empty($viewData['orderParameters']))
+	    <table border="1" width="100%" class="pdftable" style="margin:0 auto;border-collapse:collapse;margin-top:5px!important;">
+	       <tbody>		  
+		     @foreach($viewData['orderParameters'] as $paramKey => $orderParametersCategoryName)
+			@if(strtolower($orderParametersCategoryName['categoryName']) == strtolower($viewData['order']['assayParametersWithSpace']))
+			   
+			   @if(!empty($viewData['order']['header_note']))
+			   <tr>
+			      <td align="center"
+			      @if(!empty($hasContainEquipment) && !empty($viewData['order']['hasClaimValue']))
+				 colspan="6"
+			      @elseif(!empty($hasContainEquipment) && empty($viewData['order']['hasClaimValue']))
+				 colspan="5"
+			      @elseif(empty($hasContainEquipment) && !empty($viewData['order']['hasClaimValue']))
+				 colspan="5"
+			      @elseif(empty($hasContainEquipment) && empty($viewData['order']['hasClaimValue']))
+				 colspan="4"
+			      @endif
+			      style="padding:0px;"><b style="margin:0px;padding:0px;">{{!empty($viewData['order']['header_note']) ? $viewData['order']['header_note'] : '&nbsp;'}}</b></td>
+			   </tr>
+			   @endif
+			   
+			   <tr>
+			      <th align="left" width="40%">{{strtoupper($orderParametersCategoryName['categoryName'])}}</th>
+			      @if(!empty($hasContainEquipment))
+			      <th align="center">Equipment</th>
+			      @endif
+			      <th align="center">RESULT</th>
+			      @if(!empty($viewData['order']['hasClaimValue']))
+			      <th align="center">CLAIM</th>
+			      @endif
+			      <th align="center">LIMIT</th>
+			      <th align="center">METHOD</th>
+			   </tr>
+			   
+			   @foreach($orderParametersCategoryName['categoryParams'] as $key => $orderParametersCategoryParams)
+			      <tr>
+				 <td class="parameter" width="40%!important;" align="left"><?php echo trim($orderParametersCategoryParams['test_parameter_name']);?></td>
+				 @if(empty($orderParametersCategoryParams['description']))
+				    @if(!empty($hasContainEquipment))
+				       <td class="equipmentName" align="center">{{!empty($orderParametersCategoryParams['equipment_name']) ? $orderParametersCategoryParams['equipment_name'] : ''}}</td>
+				    @endif
+				    <td class="testResult" align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+				    @if(!empty($viewData['order']['hasClaimValue']))
+				       <td class="requirementName" align="center">
+					  @if(!empty($orderParametersCategoryParams['claim_value']))
+					     {{$orderParametersCategoryParams['claim_value']}}
+					     &nbsp;
+					     {{!empty($orderParametersCategoryParams['claim_value_unit']) ? strtoupper($orderParametersCategoryParams['claim_value_unit']) : ''}}
+					  @endif
+				       </td>
+				    @endif
+				    <td class="requirementName" align="center">
+				       {{!empty($orderParametersCategoryParams['requirement_from_to']) ? trim($orderParametersCategoryParams['requirement_from_to']) : ''}}
+				       &nbsp;
+				       {{!empty($orderParametersCategoryParams['claim_value_unit']) ? strtoupper($orderParametersCategoryParams['claim_value_unit']) : ''}}
+				    </td>
+				    <td class="methodName" align="center">{{!empty($orderParametersCategoryParams['method_name']) ? $orderParametersCategoryParams['method_name'] : ''}}</td>
+				 @else				 
+				    <td class="testResult" 				 
+				       @if(!empty($hasContainEquipment) && !empty($viewData['order']['hasClaimValue']))
+					  colspan="5"
+				       @elseif(!empty($hasContainEquipment) && empty($viewData['order']['hasClaimValue']))
+					  colspan="4"
+				       @elseif(empty($hasContainEquipment) && !empty($viewData['order']['hasClaimValue']))
+					  colspan="4"
+				       @elseif(empty($hasContainEquipment) && empty($viewData['order']['hasClaimValue']))
+					  colspan="3"
+				       @endif
+				    align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+				 @endif
+			      </tr>
+			   @endforeach
+			@endif
+		     @endforeach			 
+	       </tbody>
+	    </table>
+	 @endif	
+	 <!--/Assay Parameters Category-->
+	 
+	 <!--Neither Test Nor Assay Parameters Category-->
+	 @if(!empty($viewData['orderParameters']))
+	    <table border="1" width="100%" class="pdftable" style="margin:0 auto;border-collapse:collapse;margin-top:5px!important;">
+	       <tbody>	       
+		     @foreach($viewData['orderParameters'] as $paramKey => $orderParametersCategoryName)
+			@if(strtolower($orderParametersCategoryName['categoryName']) != strtolower($viewData['order']['testParametersWithSpace']) && strtolower($orderParametersCategoryName['categoryName']) != strtolower($viewData['order']['assayParametersWithSpace']))
+			   <tr>
+			      <th align="left" width="40%">{{strtoupper($orderParametersCategoryName['categoryName'])}}</th>
+			      @if(!empty($hasContainEquipment))
+			      <th align="center">Equipment</th>
+			      @endif
+			      <th align="center">RESULT</th>
+			      <th align="center">LIMIT</th>
+			   </tr>		     		     
+			   @foreach($orderParametersCategoryName['categoryParams'] as $key => $orderParametersCategoryParams)
+			      <tr>
+				 <td class="parameter" width="40%" align="left"><?php echo trim($orderParametersCategoryParams['test_parameter_name']);?></td>
+				 @if(empty($orderParametersCategoryParams['description']))
+				    @if(!empty($hasContainEquipment))
+				       <td class="equipmentName" align="center">{{!empty($orderParametersCategoryParams['equipment_name']) ? $orderParametersCategoryParams['equipment_name'] : ''}}</td>
+				    @endif
+				    <td class="testResult" align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+				    <td class="requirementName" align="center">
+				       {{!empty($orderParametersCategoryParams['requirement_from_to']) ? trim($orderParametersCategoryParams['requirement_from_to']) : ''}}
+				       &nbsp;
+				       {{!empty($orderParametersCategoryParams['claim_value_unit']) ? strtoupper($orderParametersCategoryParams['claim_value_unit']) : ''}}
+				    </td>
+				 @else
+				    <td class="testResult"
+				       @if(!empty($hasContainEquipment))
+					  colspan="3"
+				       @else
+					  colspan="2"
+				       @endif
+				    align="left">{{!empty($orderParametersCategoryParams['test_result']) ? $orderParametersCategoryParams['test_result'] : '-'}}</td>
+				 @endif
+			      </tr>
+			   @endforeach
+			@endif
+		     @endforeach			  
+	       </tbody>
+	    </table>
+	 @endif
+	 <!--/Neither Test Nor Assay Parameters Category-->
+	 
+	 <!--Notes and Remarks Section-->
+	 <table border="1" width="100%" class="pdftable" style="margin:0 auto;border-collapse:collapse;">
+	    <tr>
+	      <td colspan="3" style="border: 1px solid #fff;">
+		 <table class="pdftable" width="100%" style="border-collapse:collapse;">
+		     <tr>
+			<td width="100%" align="left" style="visibility:hidden;" colspan="3">&nbsp;</td>
+		     </tr>
+		     <tr>
+			<td width="100%" align="left" style="border: 1px solid #fff;overflow-wrap: break-word;word-wrap: break-word;vertical-align: middle;" colspan="3"><b style="display: inline-block;font-size:14px!important;display: inline-block;vertical-align: middle;">NOTE :</b> <span style="vertical-align: middle;">{{!empty($viewData['order']['note_value']) ? $viewData['order']['note_value'] : ''}}</span></td>
+		     </tr>			 
+		     <tr>
+			<td width="100%" align="left" style="visibility:hidden;" colspan="3">&nbsp;</td>
+		     </tr>
+		     <?php $testStdValue = !empty($viewData['order']['test_standard_value'])? $viewData['order']['test_standard_value']:''; ?>
+		     <tr>
+			<td width="100%" align="left" style="padding: 5px 0px !important; border-bottom: 1px solid ! important; border-top: 1px solid ! important;overflow-wrap: break-word;word-wrap: break-word;vertical-align: middle;" colspan="3">{{!empty($viewData['order']['remark_value']) ? $viewData['order']['remark_value'].$testStdValue : ''}}</td>
+		     </tr>
+		 </table>
+	      </td>
+	    </tr>
+	    <tr>
+	       <td colspan="3" style="padding-top:5px!important;border: 1px solid #fff;margin-top:10px!important;">
+		  <table class="pdftable" width="100%" style="border-collapse:collapse;border-bottom: 1px solid;">
+		     <tr>
+			<td width="33.3%" align="left" valign="bottom">
+			   @if(!empty($viewData['order']['report_date']))
+			      <p style="padding: 5px 0;font-size:13px;display: inline-block;vertical-align: middle;"><b> Report Date </b><b>: </b>{{!empty($viewData['order']['report_date']) ? date(DATEFORMAT,strtotime($viewData['order']['report_date'])) : ''}}
+			   @endif
+			</td>
+			<td width="33.3%" align="center" valign="bottom">
+			   <p style="font-size:10px;padding-top:0px!important;">
+			      @if(!empty($viewData['orderTrackRecord']['reviewing']['user_signature']) && file_exists(DOC_ROOT.SIGN_PATH.$viewData['orderTrackRecord']['reviewing']['user_signature']))
+			      <span style="display:inline-block;width:100%;@if(!empty($hasContainHeaderFooter) && in_array($hasContainHeaderFooter,array('2','3')))visibility:hidden;@endif"><img style="width:70px;height:30px;padding-top:-5px!important;" alt="{{$viewData['orderTrackRecord']['reviewing']['user_signature']}}" src="{{DOC_ROOT.SIGN_PATH.$viewData['orderTrackRecord']['reviewing']['user_signature']}}"/></span></br>
+			      @endif
+			      {{$viewData['orderTrackRecord']['reviewing']['username'] ? $viewData['orderTrackRecord']['reviewing']['username'] : '-'}}
+			   </p>
+			   <p style="font-size:13px;padding-top:0px!important;"><b>Reviewer</b></p>
+			   <p style="font-size:13px;padding-top:0px!important;"><b>*****End Of Report*****</b></p>
+			</td>
+			<?php
+			if(!empty($viewData['orderTrackRecord']['finalizing']['user_id']) && $viewData['orderTrackRecord']['finalizing']['user_id'] == '128'){
+			   $stampStyleCss     = 'margin:35px -20px;visibility:hidden;';
+			   $finalizingNameCss = 'font-size:13px;padding-top:-5px!important;';
+			   $finalizingSignCss = 'margin-bottom:-5px!important;width:70px;height:70px;';
+			}else{
+			   $stampStyleCss     = 'margin:10px -20px;visibility:hidden;';
+			   $finalizingNameCss = 'font-size:13px;padding-top:-5px!important;margin-right:40px!important;';
+			   $finalizingSignCss = 'margin-bottom:-5px!important;width:70px;height:30px;';
+			}
+			?>
+			<td width="33.3%" align="right" valign="bottom">
+			   <p style="width:100%!important;margin-right:30px!important;@if(!empty($hasContainHeaderFooter) && in_array($hasContainHeaderFooter,array('2','3')))visibility:hidden;@endif">
+			      @if(!empty($viewData['quality']['is_display_stamp']) && defined('STANDARD_QUALITY') && defined('NOT_STANDARD_QUALITY'))
+				 @if($viewData['quality']['is_display_stamp'] == '1')
+				    <span style="width: 50%; float: left;"><img style="margin: 35px -20px;"  src="{{SITE_URL.'/public/images/quality/'.STANDARD_QUALITY}}"/></span>
+				 @elseif($viewData['quality']['is_display_stamp'] == '2')
+				    <span style="width: 50%; float: left;"><img style="margin: 35px -20px;"  src="{{SITE_URL.'/public/images/quality/'.NOT_STANDARD_QUALITY}}"/></span>
+				 @endif
+			      @else
+				 <span style="width:50%;float:left;">
+				    <img style="{{$stampStyleCss}}" src="{{SITE_URL.'/public/images/quality/'.STANDARD_QUALITY}}"/></span>
+			      @endif
+			      @if(!empty($viewData['orderTrackRecord']['finalizing']['user_signature']) && file_exists(DOC_ROOT.SIGN_PATH.$viewData['orderTrackRecord']['finalizing']['user_signature']))
+				 <span style="width:50%;float:left;">
+				    <img style="{{$finalizingSignCss}}" alt="{{$viewData['orderTrackRecord']['finalizing']['user_signature']}}" src="{{SITE_URL.SIGN_PATH.$viewData['orderTrackRecord']['finalizing']['user_signature']}}"/>
+				 </span>
+			      @endif
+			   </p>
+			   <p style="{{$finalizingNameCss}}"><b>{{!empty($viewData['orderTrackRecord']['finalizing']['username']) ? $viewData['orderTrackRecord']['finalizing']['username'] : '-'}}</b></p>
+			   <p style="font-size:13px;padding-top:-5px!important;"><b>[Person Incharge / DGM Pharma]</b></p>
+			</td>
+		     </tr>
+		  </table>
+	       </td>
+	    </tr>
+	 </table>
+	 <!--/Notes and Remarks Section-->
+      </div>
+   </div>
+   <!--/content-->
+</body>
+</html>

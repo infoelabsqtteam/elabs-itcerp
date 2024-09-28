@@ -1,0 +1,13 @@
+department_code,department_name,department_type
+DEPT001,IT,IT
+DEPT002,Accounts,Finance
+DEPT003,Marketing,Management
+DEPT004,Networking,Marketup
+DEPT005,Software,Operators
+DEPT006,Others,Others
+DEPT007,Accounts,Finance
+DEPT008,Water,Others
+DEPT001,Medical,Others
+DEPT009,Pharma,Others
+DEPT010,Medicine,Others
+DEPT011,Food,Others
