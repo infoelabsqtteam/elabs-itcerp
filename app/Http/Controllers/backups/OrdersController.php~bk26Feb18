@@ -1,0 +1,1241 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+use App\Http\Requests;
+use Auth;
+use App\Company;
+use App\Order;
+use App\Models;
+use App\Setting;
+use App\ProductCategory;
+use App\SendMail;
+use App\Report;
+use Session;
+use Validator;
+use Route;
+use DB;
+use DNS1D;
+
+class OrdersController extends Controller
+{
+    /**
+    * protected Variable.
+    */
+    protected $auth;
+    
+    /**
+    * Create a new controller instance.
+    *
+    * @return void
+    */
+    public function __construct(){
+		
+	global $order,$models,$mail,$reports;
+	
+	$order 	= new Order();
+	$models = new Models();
+	$mail 	= new SendMail();
+	$reports = new Report();
+        $this->middleware('auth');
+	
+        $this->middleware(function ($request, $next) {
+            $this->auth = Auth::user();
+	    parent::__construct($this->auth);
+	    //Checking current request is allowed or not
+	    $allowedAction = array('index','navigation');
+	    $actionData    = explode('@',Route::currentRouteAction());
+	    $action        = !empty($actionData[1]) ? trim(strtolower($actionData[1])): '0';			
+	    if(defined('NOTALlOWEDTONAVIGATE') && empty(NOTALlOWEDTONAVIGATE) && in_array($action,$allowedAction)){
+		    return redirect('dashboard')->withErrors('Permission Denied!');
+	    }
+            return $next($request);
+        });	
+    }
+    
+    /**************************
+     * Display a listing of the resource.
+     * @return \Illuminate\Http\Response
+    **************************/
+    public function index(){
+		
+	global $order,$models;
+	//return $models->downloadPDF('16','order');
+	//echo $order->generateOrderNumber(array('order_date' => '2018-02-02', 'division_id' => 1 , 'product_category_id' => 2));die;
+	
+	$user_id               = defined('USERID') ? USERID : '0';
+	$division_id   	       = defined('DIVISIONID') ? DIVISIONID : '0';		
+	$department_ids        = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : '0';
+	$role_ids              = defined('ROLE_IDS') ? ROLE_IDS : '0';		
+	$equipment_type_ids    = defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : '0';
+	$showOrderDateCalender = in_array('2',$department_ids) && PHARMA_BACK_DATE_SETTING == 1 ? '1' : '0';
+	//print_r($showOrderDateCalender); die;
+        return view('sales.order_master.index',['title' => 'Orders','_orders' => 'active','user_id' => $user_id,'division_id' => $division_id,'equipment_type_ids' => $equipment_type_ids,'showOrderDateCalender'=>$showOrderDateCalender]);
+    } 
+	
+    /*************************
+    * Get orders detail.
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getOrders(Request $request){
+	    
+	global $order,$models;
+		
+	$error		= '0';
+	$message	= '';
+	$data		= '';
+	
+	$orderObj = DB::table('order_master')
+	    ->join('divisions','divisions.division_id','order_master.division_id')
+	    ->join('customer_master','customer_master.customer_id','order_master.customer_id')
+	    ->leftJoin('city_db','city_db.city_id','customer_master.customer_city')
+	    ->join('users as createdBy','createdBy.id','order_master.created_by')
+	    ->join('product_master','product_master.product_id','order_master.product_id')
+	    ->join('product_master_alias','product_master_alias.c_product_id','order_master.sample_description_id')
+	    ->join('order_status','order_status.order_status_id','order_master.status')
+	    ->leftJoin('order_sample_priority','order_sample_priority.sample_priority_id','order_master.sample_priority_id');
+		
+	//Assigning Condition according to the Role Assigned
+	parse_str($request->formData, $formData);
+	unset($formData['_token']);
+	
+	$this->setConditionAccordingToRoleAssigned($orderObj,$formData);
+	$this->getOrdersMultiSearch($orderObj,$formData);
+	
+	$orderObj->select('order_master.status','order_master.order_id','order_master.order_no','order_master.order_date','order_master.sample_description_id','order_master.remarks','order_master.expected_due_date','customer_master.customer_name','order_status.order_status_name','order_status.color_code','order_sample_priority.sample_priority_name','divisions.division_name','createdBy.name as createdByName','product_master_alias.c_product_name as sample_description','city_db.city_name as customer_city','product_master.product_name');  
+	$orderObj->orderBy('order_master.order_date','DESC');        
+	$order = $orderObj->get();
+	
+	//to formate created and updated date		   
+	$models->formatTimeStampFromArray($order,DATETIMEFORMAT);  
+		
+	//echo '<pre>';print_r($order);die;        
+	return response()->json(array('error'=> $error,'message'=> $message,'orderList'=> $order));
+    }
+    
+        /*************************
+    * functions to set conditions according to the users roles
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function setConditionAccordingToRoleAssigned($orderObj,$formData){
+	
+	global $order,$models;
+		
+	$user_id        = defined('USERID') ? USERID : '0';
+	$department_ids = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : '0';
+	$role_ids       = defined('ROLE_IDS') ? ROLE_IDS : '0';
+	$divisionId     = !empty($formData['division_id']) ? $formData['division_id'] : '0';
+	$orderDateFrom  = !empty($formData['order_date_from']) ? $formData['order_date_from'] : '0';
+	$orderDateTo    = !empty($formData['order_date_to']) ? $formData['order_date_to'] : '0';
+	$keyword        = !empty($formData['keyword']) ? $formData['keyword'] : '0';
+	
+	//Filtering records according to department assigned
+	if(!empty($department_ids) && is_array($department_ids)){			
+	    $orderObj->whereIn('order_master.product_category_id', $department_ids);
+	}
+	//Filtering records according to division assigned
+	if(!empty($divisionId) && is_numeric($divisionId)){
+	    $orderObj->where('order_master.division_id',$divisionId);
+	}
+	
+	//Filtering records according to from and to order date
+	if(!empty($orderDateFrom) && !empty($orderDateTo)){
+	    $orderObj->whereBetween(DB::raw("DATE(order_master.order_date)"), array($orderDateFrom, $orderDateTo));
+	}else if(!empty($orderDateFrom) && empty($orderDateTo)){
+	    $orderObj->where(DB::raw("DATE(order_master.order_date)"),'>=', $orderDateFrom);  
+	}else if(empty($orderDateFrom) && !empty($orderDateTo)){
+	    $orderObj->where(DB::raw("DATE(order_master.order_date)"),'<=', $orderDateTo);  
+	}else{
+	    $orderObj->where(DB::raw("MONTH(order_master.order_date)"), date('m'));
+	}
+	
+	//Filtering records according to search keyword
+	if(!empty($keyword)){
+	    $orderObj->where(function($orderObj) use ($models,$keyword){
+	    return $orderObj->Orwhere('order_master.order_no','like','%'.$keyword)
+		->Orwhere('divisions.division_name','like','%'.$keyword.'%')
+		->Orwhere('customer_master.customer_name','like','%'.$keyword.'%')
+		->Orwhere(DB::raw("DATE(order_master.order_date)"),'like','%'.$models->convertDateFormat($keyword).'%')
+		->Orwhere('product_master_alias.c_product_name','like','%'.$keyword.'%')
+		->Orwhere('order_sample_priority.sample_priority_name','like','%'.trim($keyword).'%')
+		->Orwhere('order_status.order_status_name','like','%'.trim($keyword).'%')
+		->Orwhere('order_master.remarks','like','%'.$keyword.'%')
+		->Orwhere('createdBy.name','like','%'.$keyword.'%');
+	    });
+	}
+
+	//If logged in User is Order Booker ID:4
+	if(defined('IS_ORDER_BOOKER') && IS_ORDER_BOOKER){
+	    $orderObj->where('order_master.created_by',$user_id);	
+	}
+	
+	//If logged in User ob Scheduler ID:5
+	if(defined('IS_JOB_SCHEDULER') && IS_JOB_SCHEDULER){
+	    $orderObj->join('schedulings','schedulings.order_id','order_master.order_id');
+	    $orderObj->where('schedulings.employee_id',$user_id);	
+	    $orderObj->groupBy('schedulings.order_id');						
+	}
+    }
+	
+    /*************************
+    * Show Mulit search records
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getOrdersMultiSearch($orderObject,$searchArry){
+	
+	global $order,$models;
+	
+	if(!empty($searchArry['search_order_no'])){
+	    $orderObject->where('order_master.order_no','like','%'.$searchArry['search_order_no'].'%');
+	}
+	if(!empty($searchArry['search_division_id'])){
+	    $orderObject->where('divisions.division_id','like','%'.$searchArry['search_division_id'].'%');
+	}
+	if(!empty($searchArry['search_customer_name'])){
+	    $orderObject->where('customer_master.customer_name','like','%'.$searchArry['search_customer_name'].'%');
+	}
+	if(!empty($searchArry['search_order_date'])){
+	    $orderObject->where(DB::raw("DATE(order_master.order_date)"),'like','%'.$models->convertDateFormat($searchArry['search_order_date']).'%');
+	}
+	if(!empty($searchArry['search_sample_description'])){
+	    $orderObject->where('product_master_alias.c_product_name','like','%'.$searchArry['search_sample_description'].'%');
+	}
+	if(!empty($searchArry['search_sample_priority_name'])){
+	    $orderObject->where('order_sample_priority.sample_priority_name','like','%'.$searchArry['search_sample_priority_name'].'%');
+	}
+	if(!empty($searchArry['search_remarks'])){
+	    $orderObject->where('order_master.remarks','like','%'.$searchArry['search_remarks'].'%');
+	}
+	if(!empty($searchArry['search_created_by'])){
+	    $orderObject->where('createdBy.name','like','%'.$searchArry['search_created_by'].'%');
+	}
+	if(!empty($division_id)){
+	    $orderObject->where('order_master.division_id',$division_id);
+	} 
+    }
+    
+    /*************************
+    * Get order log history.
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getOrderLog($order_id){
+	    
+	global $order,$models;
+        
+        $error    = '0';
+        $message  = '';
+        $orderLogList  = array();
+        
+        if($order_id){			
+	    $error        = '1';
+	    $orderLogList = $order->getOrderLogRecord($order_id);
+        }
+        //to formate created and updated date		   
+	$models->formatTimeStampFromArray($orderLogList,DATETIMEFORMAT); 
+		
+        return response()->json(array('error'=> $error,'message'=> $message,'orderLogList'=> $orderLogList));
+    }
+	
+    /*************************
+    * dispaly orders list
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function viewOrder(Request $request,$order_id){
+		
+        global $order,$models;
+        
+        $error    = '0';
+        $message  = '';
+        $data     = $orderList = $categoryWiseParamenter = $orderTracking = $categoryWiseParamenterArr = $orderTatInDayDetail = array();
+        
+        if($order_id){
+			
+	    $error              	= '1';
+	    $user_id            	= defined('USERID') ? USERID : '0';			
+	    $equipment_type_ids 	= defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : array();
+	    $role_ids          		= defined('ROLE_IDS') ? ROLE_IDS : '0';
+	    $orderList              	= $order->getOrder($order_id);
+	    $testProductStdParaList 	= defined('IS_TESTER') && IS_TESTER ? $order->getAsssignedOrderParameters($order_id,$user_id) : $order->getOrderParameters($order_id);
+	    $orderTracking 	   	= $order->getOrderTrackRecord($order_id);	//Get order tracking stages
+	    
+	    //to formate order and Report date	
+	    $models->formatTimeStamp($orderList,DATETIMEFORMAT); 
+               
+            $rawTestProductStdParaList = array();
+            if(!empty($testProductStdParaList)){
+		$counter = '1';
+                foreach($testProductStdParaList as $key => $values){ 
+		    
+		    $values->counter = $counter++;
+		    
+		    //checking if desccription has been edited or not
+		    $allowedExceptionParameters = array('description','description(cl:3.2.1)','description(cl:3.2)');
+		    if(!empty($values->test_parameter_name) && in_array(strtolower($values->test_parameter_name),$allowedExceptionParameters)){
+			if(!empty($values->test_result) && strtolower($values->test_result) != 'n/a'){
+			    $values->description = $values->test_result;
+			}
+		    }					
+		    if(!empty($values->test_parameter_name) && strtolower($values->test_parameter_name) == 'reference to protocol'){
+			if(!empty($values->test_result) && strtolower($values->test_result) != 'n/a'){
+			    $values->description = $values->test_result;
+			}
+		    }
+                    $rawTestProductStdParaList[$values->analysis_id] = $values;
+		    $orderTatInDayDetail[$values->time_taken_days]   = !empty($values->time_taken_days) ? trim($values->time_taken_days) : '0';
+                }
+            }
+	    
+            if(!empty($rawTestProductStdParaList)){
+                foreach($rawTestProductStdParaList as $key => $values){
+                    $categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']   = $values->category_sort_by;   
+                    $categoryWiseParamenter[$values->test_para_cat_id]['categoryId']       = $values->test_para_cat_id;                    
+                    $categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     = $values->test_para_cat_name;
+                    $categoryWiseParamenter[$values->test_para_cat_id]['productCatID']     = $values->p_category_id;
+                    $categoryWiseParamenter[$values->test_para_cat_id]['testId']     	   = $values->test_id;
+                    $categoryWiseParamenter[$values->test_para_cat_id]['testCode']     	   = $values->test_code;
+                    $categoryWiseParamenter[$values->test_para_cat_id]['productId']        = $values->product_id; 
+                    $categoryWiseParamenter[$values->test_para_cat_id]['productName']      = $values->product_name;                     
+                    $categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] = $values;
+                }
+                $categoryWiseParamenter = array_values($categoryWiseParamenter);
+            }
+	    
+	    $orderList->po_date   		= !empty($orderList->po_date) ? date(DATEFORMAT,strtotime($orderList->po_date)) : '';
+	    $orderList->canHoldUnholdOrder   	= DB::table('order_process_log')->where('order_process_log.opl_order_id',$order_id)->whereNotIn('order_process_log.opl_order_status_id',array('1','12'))->count();
+	    $orderList->maxTatInDayNumber	= !empty($orderTatInDayDetail) ? max($orderTatInDayDetail) : '0';
+	    $orderList->totalOrderParameters	= !empty($testProductStdParaList) ? count($testProductStdParaList) : '0';
+	    $categoryWiseParamenterArr 		= !empty($categoryWiseParamenter) ? $models->sortArrayAscOrder($categoryWiseParamenter) : array();       //sort category array
+        }
+	
+	//echo '<pre>';print_r($orderList);die;    
+        return response()->json(array('error'=> $error,'message'=> $message,'orderList'=> $orderList,'orderParameterList' => $categoryWiseParamenterArr , 'orderTrackingList' => $orderTracking));
+    }
+    
+    /*************************
+    * save new order /create new order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function createOrder(Request $request){
+		
+        global $order,$models;
+        
+	$error       	 = '0';
+	$message     	 = config('messages.message.OrderInternalErrorMsg');
+	$data        	 = '';
+	$customerId  	 = '0';
+	$sampleId    	 = '0';
+	$currentDate     = !defined('ORDERCURRENTDATE') ? ORDERCURRENTDATE : date('d-m-Y');
+	$currentDateTime = !defined('CURRENTDATETIME') ? CURRENTDATETIME : date('Y-m-d H:i:s');
+	$formData    	 = array();
+        
+        //Saving record in orders table
+        if(!empty($request->formData) && $request->isMethod('post')){
+	    
+	    //Parsing the Serialze Dta
+        parse_str($request->formData, $formData);
+        if(!empty($formData)){
+		if(empty($formData['sample_id'])){
+		    $message = config('messages.message.sampleReceivingCodeRequired');
+		}else if(!$order->checkSampleAndTestProductCategory($formData['sample_id'],$models->getMainProductCatParentId($formData['product_category_id']))){
+		    $message = config('messages.message.mismatchSampleAndTestProductCategory');
+		}else if(empty($formData['customer_id'])){
+		    $message = config('messages.message.customerNameRequired');
+		}else if(empty($formData['customer_city'])){
+		    $message = config('messages.message.customerCityRequired');
+		}else if(empty($formData['mfg_lic_no'])){
+		    $message = config('messages.message.customerLicNumRequired');
+		}else if(empty($formData['sale_executive'])){
+		    $message = config('messages.message.saleExecutiveRequired');
+		}else if(empty($formData['discount_type_id'])){
+		    $message = config('messages.message.discountTypeRequired');
+		}else if($formData['discount_type_id'] != '3' && empty($formData['discount_value'])){
+		    $message = config('messages.message.discountValueRequired');
+		}else if(empty($formData['division_id'])){
+		    $message = config('messages.message.divisionNameRequired');				
+		}else if(empty($formData['order_date'])){
+		    $message = config('messages.message.OrderDateErrorMsg');
+		}else if(!$order->isValidDate($formData['order_date'])){
+		    $message = config('messages.message.OrderInValidOrderDateMsg');	
+		}else if(empty($formData['sample_description'])){
+		    $message = config('messages.message.sampleDescriptionRequired');	
+		}else if(empty($formData['batch_no'])){
+		    $message = config('messages.message.batchNoRequired');
+		}else if(isset($formData['is_sealed']) && is_null($formData['is_sealed'])){
+		    $message = config('messages.message.isSealedRequired');
+		}else if(isset($formData['is_signed']) && is_null($formData['is_signed'])){
+		    $message = config('messages.message.isSignedRequired');
+		}else if(empty($formData['packing_mode'])){
+		    $message = config('messages.message.packingModeRequired');
+		}else if(empty($formData['submission_type'])){
+		    $message = config('messages.message.submissionTypeRequired');
+		}else if(!$order->checkBookingAndSampleReceivingDate($formData['order_date'],$formData['sample_id'])){
+		    $message = config('messages.message.orderDateSampleReceDateMismatch');
+		}else if(isset($formData['sampling_date']) && !$order->checkBookingAndSamplingDate($formData['order_date'],$formData['sampling_date'])){ 
+		    $message = config('messages.message.orderDateSamplingDateMismatch');
+		}
+		else if($this->claimValueValidation($formData['order_parameters_detail'])){
+		    $message = config('messages.message.claimValueErrorMsg');
+		}
+		else if($this->claimUnitValidation($formData['order_parameters_detail'])){
+		    $message = config('messages.message.claimValueUnitErrorMsg');
+		}
+		else if(empty($formData['order_parameters_detail'])){
+		    $message = config('messages.message.OrderProductTestParamsMsg');
+		}else if(isset($formData['header_note']) && empty($formData['header_note'])){
+		    $message = config('messages.message.headerNoteRequired');
+		}else if(isset($formData['stability_note']) && empty($formData['stability_note'])){
+		    $message = config('messages.message.stabilityIdRequired');
+		}else if(isset($formData['sample_priority_id']) && empty($formData['sample_priority_id'])){
+		    $message = config('messages.message.samplePriorityIdRequired');
+		}else if(isset($formData['po_type']) && empty($formData['po_no'])){
+		    $message = config('messages.message.samplePoNoRequired');
+		}else if(isset($formData['po_type']) && empty($formData['po_date'])){
+		    $message = config('messages.message.samplePoDateRequired');
+		}else if(isset($formData['sample_type']) && empty($formData['order_sample_type'])){
+		    $message = config('messages.message.sampleTypeRequired');
+		}else if(isset($formData['hold_type']) && empty($formData['hold_reason'])){
+		    $message = config('messages.message.sampleHoldTypeRequired');
+		}else{
+			//die('fgf');
+		    //Error Msg if order has not been placed.
+		    $message = config('messages.message.OrderNotPlacedMsg');
+			
+		    //Sending customer name to the response for save more button
+		    $customerId    = !empty($formData['customer_id']) ? $formData['customer_id'] : '0';
+		    $sampleId      = !empty($formData['sample_id']) ? $formData['sample_id'] : '0';
+		    $finalTypeSave = !empty($formData['final_type_save']) ? $formData['final_type_save'] : '0';
+				    
+		    //Setting the variable from request data
+		    $formData['order_date']    			= $order->getFormatedDateTime($formData['order_date'], $format='Y-m-d');
+		    $formData['booking_date']    		= $currentDateTime;
+		    $formData['sampling_date'] 			= !empty($formData['sampling_date']) && !empty($formData['sampling_date']) ? $order->getFormatedDate($formData['sampling_date'], $format='Y-m-d H:i:s') : NULL ;
+		    $formData['product_category_id'] 		= $models->getMainProductCatParentId($formData['product_category_id']);
+		    $formData['order_no']      			= $order->generateOrderNumber($formData);
+		    $formData['barcode']			= 'data:image/png;base64,'.DNS1D::getBarcodePNG($formData['order_no'], 'C128');
+		    $formData['sample_description_id']  	= $order->createAliaAndUpdateOrderSampleName($request->formData);
+		    $formData['header_note']  			= !empty($formData['header_note']) ? $order->createAndUpdateHeaderNote($formData['header_note']) : '';
+		    $formData['stability_note']  		= !empty($formData['stability_note']) ? $order->createAndUpdateStabilityNote($formData['stability_note']) : '';
+		    $formData['created_by']    			= USERID;
+		    $formData['billing_type']         		= $formData['billing_type'];
+		    $formData['status'] 			= !empty($formData['hold_type']) && !empty($formData['hold_reason']) ? '12' : '1' ;
+		    $formData['po_no'] 				= !empty($formData['po_type']) && !empty($formData['po_no']) ? $formData['po_no'] : NULL;
+		    $formData['po_date'] 			= !empty($formData['po_type']) && !empty($formData['po_date']) ? $order->getFormatedDateTime($formData['po_date'], $format='Y-m-d') : NULL;
+		    
+		    //Unsetting the variable from request data
+		    $formData = $models->unsetFormDataVariables($formData,array('_token','sample_description','test_param_alternative_id','order_parameters_detail','final_type_save','po_type','sample_type','hold_type'));
+		    //echo '<pre>';print_r($formData);die;
+		    
+		    if(!empty($formData['order_no']) && !empty($formData['sample_description_id'])){
+			if($order->checkAddCustomerInvoivingRate($formData['sample_description_id'],$request->formData)){
+			    $orderId = DB::table('order_master')->insertGetId($formData);
+			    if(!empty($orderId)){
+				if($this->save_order_parameter_detail($request->formData,$orderId,$finalTypeSave,$formData['status'])){
+				    $error   = '1';
+				    $data    = $orderId;
+				    $message = config('messages.message.OrderPlacedMsg');
+				}                    
+			    }
+			}else{
+			    $message = config('messages.message.InvocingTypeRequired');
+			}
+		    }
+                }                
+            }	    
+        }
+	
+        return response()->json(['error'=> $error,'message'=> $message,'data'=> $data, 'customer_id' => $customerId, 'sample_id' => $sampleId, 'currentDate' => $currentDate]);	
+    }
+	
+	/*************************
+    *Claim value validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+	public function claimValueValidation($orderParameterDetail){
+		if(!empty($orderParameterDetail)){
+			$claimDependent = !empty($orderParameterDetail['claim_dependent']) ? array_filter($orderParameterDetail['claim_dependent']): '';
+			$claimValue = isset($orderParameterDetail['claim_value']) &&  !empty($orderParameterDetail['claim_value']) ? array_filter($orderParameterDetail['claim_value']) : NULL;
+			
+			if(!empty($claimDependent) && (count($claimDependent) != count($claimValue))){
+			return true;
+			}else{
+				return false;
+			}	
+		}
+	}
+	/*************************
+    * Claim value unit validation on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+	public function claimUnitValidation($orderParameterDetail){
+		if(!empty($orderParameterDetail)){
+			$claimDependent = !empty($orderParameterDetail['claim_dependent']) ? array_filter($orderParameterDetail['claim_dependent']): '';
+			$claimUnit = isset($orderParameterDetail['claim_value_unit']) && !empty($orderParameterDetail['claim_value_unit']) ? array_filter($orderParameterDetail['claim_value_unit']) : NULL;
+			if(!empty($claimDependent) && (count($claimDependent) != count($claimUnit))){
+				return true;
+			}else{
+				return false;
+			}
+		}
+	}
+    /*************************
+    * Save order parameters details on add order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function save_order_parameter_detail($product_test_dtl_data_raw,$orderId,$finalTypeSave,$orderStatus){
+	
+	global $order,$models,$mail;
+	
+	$orderParametersDataSave = array();		
+	$mailTemplateType        = 1;
+
+        if(!empty($product_test_dtl_data_raw) && !empty($orderId)){
+	    
+	    //Parsing the form Data
+            parse_str($product_test_dtl_data_raw, $product_test_dtl_data);
+	    
+            if(!empty($product_test_dtl_data['order_parameters_detail'])){
+				if(!empty($product_test_dtl_data['order_parameters_detail']['claim_dependent'])){
+					unset($product_test_dtl_data['order_parameters_detail']['claim_dependent']) ;
+				}
+                foreach($product_test_dtl_data['order_parameters_detail'] as $keyParameter => $orderParametersData){
+					
+                    foreach($orderParametersData as $key => $orderParameters){
+						$orderParameters = empty($orderParameters) ? null : $orderParameters;
+                        $orderParametersDataSave[$key]['order_id']    = $orderId;
+                        $orderParametersDataSave[$key][$keyParameter] = $orderParameters;
+                    }
+                }
+				//die;
+                if(!empty($orderParametersDataSave) && DB::table('order_parameters_detail')->insert($orderParametersDataSave)){
+										
+		    //Generation of Expected Due Date and saving to the order master table
+		    $order->generateUpdateOrderExpectedDueDate($orderId);
+		    
+		    //Adding Order Parameter in Scheduling table
+		    $order->createOrderSchedulingJobs($orderId);
+		    
+		    //Updating Sample Status of booked Order in  samples table
+		    if($finalTypeSave){$order->UpdateSampleStatusOfBookedSample($orderId);}
+		    
+		    //Updating order progress log  table at the time of booking
+		    $order->updateOrderStausLog($orderId,$orderStatus);
+					
+                    return true;
+                } 
+            }            
+        }
+        return false;
+    }
+	
+    /*************************
+    * update order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function updateOrder(Request $request){
+
+        global $order,$models;
+        
+        $error      	= '0';
+        $message    	= config('messages.message.OrderInternalErrorMsg');
+        $data       	= '';
+	$orderId    	= '0';
+	$status     	= '1';
+        $formData   	= array();
+	$logStatusFlag 	= '0';
+       
+        //Saving record in orders table
+        if(!empty($request->formData) && $request->isMethod('post')){
+	
+	    //Parsing Serialize form data
+	    parse_str($request->formData, $formData);
+		//Extracting Order Parameter Detail
+		    $orderParameter = !empty($formData['order_parameters_detail']) ? $formData['order_parameters_detail'] : '';
+	    if(!empty($formData)){				
+		$orderId  = !empty($formData['order_id']) ? $formData['order_id'] : '0';
+		if(empty($formData['customer_id'])){
+		    $message = config('messages.message.customerNameRequired');
+		}else if(empty($formData['customer_city'])){
+		    $message = config('messages.message.customerCityRequired');
+		}else if(empty($formData['mfg_lic_no'])){
+		    $message = config('messages.message.customerLicNumRequired');
+		}else if(empty($formData['sale_executive'])){
+		    $message = config('messages.message.saleExecutiveRequired');
+		}else if(empty($formData['discount_type_id'])){
+		    $message = config('messages.message.discountTypeRequired');
+		}else if($formData['discount_type_id'] != '3' && empty($formData['discount_value'])){
+		    $message = config('messages.message.discountValueRequired');
+		}else if(empty($formData['division_id'])){
+		    $message = config('messages.message.divisionNameRequired');				
+		}else if(empty($formData['order_date'])){
+		    $message = config('messages.message.OrderDateErrorMsg');
+		}else if(empty($formData['sample_description'])){
+		    $message = config('messages.message.sampleDescriptionRequired');	
+		}else if(empty($formData['batch_no'])){
+		    $message = config('messages.message.batchNoRequired');
+		}else if(isset($formData['is_sealed']) && is_null($formData['is_sealed'])){
+		    $message = config('messages.message.isSealedRequired');
+		}else if(isset($formData['is_signed']) && is_null($formData['is_signed'])){
+		    $message = config('messages.message.isSignedRequired');
+		}else if(empty($formData['packing_mode'])){
+		    $message = config('messages.message.packingModeRequired');
+		}else if(empty($formData['submission_type'])){
+		    $message = config('messages.message.submissionTypeRequired');
+		}else if(!isset($formData['sample_priority_id']) && empty($formData['sample_priority_id'])){
+		    $message = config('messages.message.samplePriorityIdRequired');
+		}else if(!$order->checkUpdateSampleReceivingCustomer($formData['customer_id'],$orderId)){ //Updating Sample Receiving Customer_id
+		    $message = config('messages.message.orderCustomerChangeErrorMsg');
+		}else if($this->claimValueValidationOnEdit($orderParameter)){
+		    $message = config('messages.message.claimValueErrorMsg');
+		}
+		else if($this->claimUnitValidationOnEdit($orderParameter)){
+		    $message = config('messages.message.claimValueUnitErrorMsg');
+		}else if(isset($formData['po_type']) && empty($formData['po_no'])){
+		    $message = config('messages.message.samplePoNoRequired');
+		}else if(isset($formData['po_type']) && empty($formData['po_date'])){
+		    $message = config('messages.message.samplePoDateRequired');
+		}else if(isset($formData['sample_type']) && empty($formData['order_sample_type'])){
+		    $message = config('messages.message.sampleTypeRequired');
+		}else if(isset($formData['hold_type']) && empty($formData['hold_reason'])){
+		    $message = config('messages.message.sampleHoldTypeRequired');
+		}else{
+		    //Error Msg if order has not been placed.
+		    $message = config('messages.message.OrderNotUpdatedMsg');
+		      		    
+		    //Setting order Master form data
+		    $formData['advance_details'] 	= !empty($formData['advance_details']) ? $formData['advance_details'] : '';
+		    $formData['advance_details'] 	= $formData['submission_type'] > '1' ? '' : $formData['advance_details'];
+		    $formData['sample_priority_id'] 	= !empty($formData['sample_priority_id']) ? $formData['sample_priority_id'] : NULL;
+		    $formData['sample_description_id']  = $order->updateAliaOnUpdateOrderSampleName($orderId,$request->formData);
+		    $formData['sampling_date'] 		= !empty($formData['sampling_date']) ? $order->getFormatedDate($formData['sampling_date'], $format='Y-m-d H:i:s') : NULL;
+		    $formData['po_no'] 			= !empty($formData['po_type']) && !empty($formData['po_no']) ? $formData['po_no'] : NULL;
+		    $formData['po_date'] 		= !empty($formData['po_type']) && !empty($formData['po_date']) ? $order->getFormatedDateTime($formData['po_date'], $format='Y-m-d') : NULL;
+		    $formData['order_sample_type']	= !empty($formData['sample_type']) && !empty($formData['order_sample_type']) ? $formData['order_sample_type'] : NULL;
+		    
+		    //If Hold Checkbox checked by the User
+		    if(isset($formData['hold_type']) && !empty($formData['hold_reason'])){$formData['status'] = '12';$status = '12';$logStatusFlag = '1';}
+		    
+		    //Unsetting the variable from request data
+		    $formData = $models->unsetFormDataVariables($formData,array('_token','sample_description','order_id','order_date','product_id','order_parameters_detail','test_standard','po_type','sample_type','hold_type'));
+		    //echo '<pre>';print_r($formData);die;
+		    
+		    if(!empty($orderId) && !empty($formData['sample_description_id'])){
+			if(!empty($order->checkEditCustomerInvoivingRate($formData['sample_description_id'],$request->formData))){
+			    
+			    //Updating Order Master
+			    DB::table('order_master')->where('order_id','=',$orderId)->update($formData);
+			    
+			    //Updating Oder Parameter Detail
+			    !empty($orderParameter) ? $this->updateOrderParameterDetails($orderId,$orderParameter): '';
+			    
+			    //Updating order progress log table at the time of editing an order
+			    !empty($logStatusFlag) ? $order->updateOrderStausLog($orderId,$status) : $order->updateOrderLog($orderId,$status);
+			    
+			    $error   = '1';
+			    $data    = $orderId;
+			    $message = config('messages.message.updated'); 	
+			}else{
+			    $message = config('messages.message.InvocingTypeRequired');
+			}
+		    }               
+                }               
+            }	    
+        }
+	
+        return response()->json(['error'=> $error,'message'=> $message,'data'=> $data, 'orderId' => $orderId]);	
+    }
+	
+	/*************************
+    *	Claim value validation on edit order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function claimValueValidationOnEdit($orderParameterDetail){
+		$claimValue =array();
+		if(!empty($orderParameterDetail)){
+			foreach($orderParameterDetail as $key=>$orderParameterData){
+				$id = str_replace("'","",$key);
+				if(isset($orderParameterData['claim_value'])){
+					$claimValue[] = !empty($orderParameterData['claim_value']) ? $orderParameterData['claim_value'] : NULL;
+				}
+				if($id == 'new'){
+					foreach($orderParameterData as $key1=>$newData){
+						$claimValue[] = $newData['claim_value'];
+					}	
+				}
+			}
+
+			if(isset($claimValue) && (count(array_filter($orderParameterDetail['claim_dependent'])) != count(array_filter($claimValue)))){
+					return true;
+				}else{
+					return false;
+				}
+			
+		}
+	}
+	/*************************
+    *Claim value unit validation on edit order
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/ 
+	public function claimUnitValidationOnEdit($orderParameterDetail){
+		$claim_value_unit =array();
+		if(!empty($orderParameterDetail)){
+			foreach($orderParameterDetail as $key=>$orderParameterData){
+				$id = str_replace("'","",$key);
+				if(isset($orderParameterData['claim_value_unit'])){
+					$claim_value_unit[] = !empty($orderParameterData['claim_value_unit']) ? $orderParameterData['claim_value_unit'] : NULL;
+				}
+				if($id == 'new'){
+					foreach($orderParameterData as $key1=>$newData){
+						$claim_value_unit[] = $newData['claim_value_unit'];
+					}	
+				}
+			}
+			array_filter($claim_value_unit);
+			if(isset($claim_value_unit) && (count(array_filter($orderParameterDetail['claim_dependent'])) != count(array_filter($claim_value_unit)))){
+				return true;
+			}else{
+				return false;
+			}
+		}
+
+	}
+    /*************************
+    * update order parameters detail
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function updateOrderParameterDetails($orderId,$postData){
+	global $order;
+	$returnData = array();
+        $updatedArr = array();
+	
+	if ($postData){ 
+	    if(!empty($postData)){
+			unset($postData['claim_dependent']);
+		foreach($postData as $key=>$newPostData){ 
+		    $id = str_replace("'","",$key);
+		    if($id == 'new'){
+			foreach($newPostData as $newData){
+				unset($newData['claim_dependent']);
+			    $newData['order_id'] = $orderId;
+			    $inserted = DB::table('order_parameters_detail')->insertGetId(array_filter($newData));
+			    if(!empty($inserted)){
+				DB::table('schedulings')->where('schedulings.order_id','=',$orderId)->delete();
+				$order->createOrderSchedulingJobs($orderId);	
+			    }
+			}
+		    }else{
+				unset($newPostData['claim_dependent']);
+			$updated =  DB::table('order_parameters_detail')->where('order_parameters_detail.analysis_id','=',$id)->update(array_filter($newPostData));
+		    }
+		}
+		if(!empty($updated) && !empty($inserted)){
+			$returnData = array('success' => config('messages.message.parameterUpdated'));  
+		}else{
+			$returnData = array('success' => config('messages.message.error'));  
+		}
+	    }else{
+		$returnData = array('error' =>  config('messages.message.dataNotFound'));
+	    }
+	}else{
+	    $returnData = array('error' => config('messages.message.dataNotFound'));
+	} 
+	return response()->json($returnData);
+    }
+    
+    /*************************
+    * Get list of ProductTestParameters on add order.
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getProductTestParametersList(Request $request,$test_id){
+	
+	global $order,$models;
+	
+	$categoryWiseParamenter = $categoryWiseParamenterSortedArr = array();
+	
+	$testStandardList = DB::table('product_test_hdr')->where('product_test_hdr.test_id','=',$test_id)->first();
+	
+	$productTestParametersList = DB::table('product_test_dtl')
+	    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+	    ->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+	    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+	    ->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+	    ->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+	    ->select('product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+	    ->where('product_test_dtl.test_id',$test_id)
+	    ->orderBy('product_test_dtl.parameter_sort_by','asc')
+	    ->get();
+	
+	if(!empty($productTestParametersList)){
+	    foreach($productTestParametersList as $key => $values){
+		$categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     	= $values->category_sort_by;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     		= $values->test_para_cat_id;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+		$categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] 		= $values;
+	    }
+	    $categoryWiseParamenter 	     = array_values($categoryWiseParamenter);
+	    $categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+	}
+	
+	return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr,'testStandardList' => $testStandardList]);
+    }
+	
+    /*************************
+    * Get list of Product Test Parameters on edit.
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getEditProductTestParametersList($test_id,$orderId){
+	
+	global $order,$models;
+        
+	$productTestParametersList = DB::table('product_test_dtl')
+		->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+		->join('product_master','product_master.product_id','product_test_hdr.product_id')
+		->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+		->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+		->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+		->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+		->select('order_parameters_detail.product_test_parameter','order_parameters_detail.order_id','product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+		->where('product_test_dtl.test_id',$test_id)
+		->leftJoin('order_parameters_detail', function($join) use ($orderId){                    
+			$join->on('order_parameters_detail.product_test_parameter', '=', 'product_test_dtl.product_test_dtl_id');
+			$join->where('order_parameters_detail.order_id',$orderId);
+		})	
+		->orderBy('product_test_dtl.parameter_sort_by','asc')
+		->groupBy('product_test_dtl.product_test_dtl_id')
+		->get();
+		
+	$categoryWiseParamenter = array();
+	if(!empty($productTestParametersList)){
+		foreach($productTestParametersList as $key => $values){
+			
+			$analysis_id =  !empty($orderDetailOrderId) ? $orderDetailOrderId->analysis_id : '' ;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     	= $values->category_sort_by;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     		= $values->test_para_cat_id;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] 		= $values;
+			
+		}
+		$categoryWiseParamenter = array_values($categoryWiseParamenter);
+	}
+	$categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+	return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr]);
+    }
+    
+    /*************************
+    * Get list of product test parameters on edit order .
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getEditProductTestParameters(Request $request){
+        
+        global $order,$models;
+
+        $categoryWiseParamenter = $paraIdArr = $order_stability = array();
+		
+	    if(!empty($request['data']['formData'])){
+		    //Parsing the form Data
+		    parse_str($request['data']['formData'], $newPostData);
+		    //Getting All order stability
+		    $order_stability = DB::table('order_stability_notes')->orderBy('order_stability_notes.stability_name','ASC')->get();
+		    if(!empty($newPostData)){
+			    $paraIdArr=$newPostData['test_parameters'];			
+			    $productTestParametersList = DB::table('product_test_dtl')
+				    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+				    ->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+				    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+				    ->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+				    ->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+				    ->select('product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+				    ->whereIn('product_test_dtl.product_test_dtl_id',$paraIdArr)
+				    ->orderBy('product_test_dtl.parameter_sort_by','asc')
+				    ->get();
+			    $categoryWiseParamenter = array();
+			    if(!empty($productTestParametersList)){
+				    foreach($productTestParametersList as $key => $values){
+					    $categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']    = $values->category_sort_by;
+					    $categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     	= $values->test_para_cat_id;
+					    $categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     	= $values->test_para_cat_name;
+					    $categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] 	= $values;	
+				    }
+				    $categoryWiseParamenter = array_values($categoryWiseParamenter);
+			    }
+		    }
+	    }
+	    
+	    $categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+	    //echo'<pre>';print_r($categoryWiseParamenter); die;
+	    return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr,'order_stability' => $order_stability]);
+    }
+	
+    /***********************
+    * Get list of product test parameters  .
+    * @param  \Illuminate\Http\Request  $request
+    * @return \Illuminate\Http\Response
+    ************************/
+    public function getProductTestParameters(Request $request){
+        
+        global $order,$models;
+		
+        $categoryWiseParamenter = $paraIdArr = $order_stability = array();
+		
+	if(!empty($request['data']['formData'])){
+		//Parsing the form Data
+		parse_str($request['data']['formData'], $newPostData);
+		//Getting All order stability
+		$order_stability = DB::table('order_stability_notes')->orderBy('order_stability_notes.stability_name','ASC')->get();
+		
+		if(!empty($newPostData)){
+			$paraIdArr=$newPostData['test_parameters'];			
+			$productTestParametersList = DB::table('product_test_dtl')
+				->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+				->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+				->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+				->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+				->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+				->select('product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+				->whereIn('product_test_dtl.product_test_dtl_id',$paraIdArr)
+				->orderBy('product_test_dtl.parameter_sort_by','asc')
+				->get();
+				
+			$categoryWiseParamenter = array();
+			if(!empty($productTestParametersList)){
+				foreach($productTestParametersList as $key => $values){
+					$categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     = $values->category_sort_by;
+					$categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     = $values->test_para_cat_id;
+					$categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     = $values->test_para_cat_name;
+					$categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] = $values;
+				}
+				$categoryWiseParamenter = array_values($categoryWiseParamenter);
+			}
+		}
+	}
+	$categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+	//echo'<pre>';print_r($categoryWiseParamenterSortedArr); die;
+	return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr,'order_stability' => $order_stability]);
+    }
+
+    /***********************
+    * Alternative product test parameters
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function getAlterProductTestParameters(Request $request, $product_test_dtl_id){
+	
+	global $order,$models;
+		
+        $alternativeTestProParamsList = DB::table('product_test_parameter_altern_method')
+		->join('product_test_hdr','product_test_hdr.test_id','product_test_parameter_altern_method.test_id')
+		->join('test_parameter','test_parameter.test_parameter_id','product_test_parameter_altern_method.test_parameter_id')
+		->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+		->join('equipment_type','equipment_type.equipment_id','product_test_parameter_altern_method.equipment_type_id')			
+		->join('method_master','method_master.method_id','product_test_parameter_altern_method.method_id')			
+		->select('product_test_parameter_altern_method.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name')
+		->where('product_test_parameter_altern_method.product_test_dtl_id',$product_test_dtl_id)
+		->get();
+	
+	//echo '<pre>';print_r($alternativeTestProParamsList);die;		
+	return response()->json(['alternativeTestProParamsList' => $alternativeTestProParamsList]);
+    }
+    
+    /***********************
+    * Select alternative  product test parameters
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function reSelectTestStandardParameters(Request $request, $product_test_param_altern_method_id){
+    
+	global $order,$models;
+	
+	$alterSelectedTestProParamsList = $order->getAlternativeParametersDetail($product_test_param_altern_method_id);
+	
+	//echo '<pre>';print_r($alterSelectedTestProParamsList);die;        
+	return response()->json(['alterSelectedTestProParamsList' => $alterSelectedTestProParamsList]);
+    }
+    
+    /***********************
+    * Delete a order
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function deleteOrder(Request $request, $order_id){
+		
+	global $order,$models;
+		
+        $error    = '0';
+        $message  = '';
+        $data     = '';
+        
+        try{
+            $checkOrderProcessing = DB::table('order_parameters_detail')->where('order_parameters_detail.order_id','=',$order_id)->where('order_parameters_detail.test_result','<>',null)->first();
+            if(empty($checkOrderProcessing) && DB::table('order_master')->where('order_master.order_id','=',$order_id)->delete()){
+                $error    = '1';
+                $message = config('messages.message.OrderDeleteMsg');      
+            }else{
+                $message = config('messages.message.orderForeignKeConstraintFail');
+            }
+        }catch(\Illuminate\Database\QueryException $ex){
+            $message = config('messages.message.orderForeignKeConstraintFail');
+        }             
+	
+	return response()->json(['error' => $error,'message' => $message]);
+    }  
+
+
+	/***********************
+    * Delete orders parameters
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function deleteOrderParameter($order_id,$analysis_id){
+		
+	global $order,$models;
+		
+        $error    = '0';
+        $message  = '';
+        $data     = '';
+        
+        try{
+            
+            DB::table('order_parameters_detail')->where('order_parameters_detail.order_id','=',$order_id)->where('order_parameters_detail.analysis_id','=',$analysis_id)->delete();
+			DB::table('schedulings')->where('schedulings.order_id','=',$order_id)->where('schedulings.order_parameter_id','=',$analysis_id)->delete();
+                $error    = '1';
+                $message = config('messages.message.OrderParameterDeleteMsg');      
+            
+        }catch(\Illuminate\Database\QueryException $ex){
+            $message = config('messages.message.orderForeignKeConstraintFail');
+        }             
+		return response()->json(['error' => $error,'message' => $message]);
+    }  
+
+    /***********************
+    *Cancel order
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function cancelOrder(Request $request, $orderId){
+	    
+	global $order,$models;
+	
+	$error    = '0';
+	$message  = config('messages.message.error');
+	$data     = '';
+	$status   = '10';
+	
+	if(!empty($orderId)){
+	    //Updating order progress log  table at the time of booking		
+	    $cancelOrder = $order->updateOrderStausLog($orderId,$status);
+	    if($cancelOrder){
+		$error    = '1';
+		$message = config('messages.message.OrderCancelMsg');      
+	    }else{
+		$message = config('messages.message.OrderCancelFailedMsg');
+	    }
+	}	
+	return response()->json(['error' => $error,'message' => $message]);
+    }
+	
+    /***********************
+    * upload order pdf
+    * $Request
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function uploadOrderPdf(Request $request) {
+
+        global $order, $invoice, $models;
+
+        $error 		= '0';
+        $message 	= config('messages.message.error');
+        $data 		= array();
+        $flag 		= '0';
+        $formData   = array();
+		
+        if (!empty($request['order_file'])) {
+            $formData = array_filter($request->all());
+            if (!empty($formData['order_id'])) {
+                $order_id = $order->getOrderDetail($formData['order_id']);
+                if (!empty($order_id->order_id)) {
+                    $updated = DB::table('order_master')->where('order_id', '=', $order_id->order_id)->update(['job_order_file' => $formData['job_order_file']]);
+                    if ($updated) {
+                        //generate pdf file in public/images/sales/invoices folder
+                        $order_file = $formData['order_file'];
+                        list($type, $order_file) = explode(';', $order_file);
+                        list(, $order_file) = explode(',', $order_file);
+                        $order_file = base64_decode($order_file);
+                        if (!file_exists(DOC_ROOT . ORDER_PATH)) {
+                            mkdir(DOC_ROOT . ORDER_PATH, 0777, true);
+                        }
+                        $pdf = fopen(DOC_ROOT . ORDER_PATH . $formData['job_order_file'], 'w');
+                        fwrite($pdf, $order_file);
+                        fclose($pdf);
+                        $message = config('messages.message.OrdePdfMsg');
+                        $error = 1;
+                    }
+                }
+            }
+        }
+        return response()->json(array('error' => $error, 'message' => $message, 'formData' => $formData));
+    }
+	
+    /***********************
+    * generate Job Order PDF.
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    **********************/
+    public function generateJobOrderPdf(Request $request){
+		
+	global $order, $invoice, $models;
+	
+	$error 		= '0';
+	$message 	= config('messages.message.error');
+	$data 		= $jobOrderFile = '';
+	$formData   = array();
+		
+        if($request->isMethod('post') && !empty($request->order_id)){
+	    $jobOrderData = $models->generatePDF($request->order_id,$contentType='order');
+	    if(!empty($jobOrderData)){
+		foreach($jobOrderData as $orderId => $jobOrderFile){
+		    if($orderId && $jobOrderFile){
+			DB::table('order_master')->where('order_id', '=', $orderId)->update(['job_order_file' => $jobOrderFile]);
+			$error 		  = '1';
+			$message 	  = config('messages.message.fileGenerationMsg');
+			$jobOrderFile = preg_replace('/(\/+)/','/',ORDER_PATH.$jobOrderFile);						
+		    }					
+		}
+	    }
+	}
+	return response()->json(array('error' => $error, 'message' => $message, 'jobOrderFile' => $jobOrderFile));
+    }
+	
+    /*********************
+    * search on add product test parameter popup
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    ***********************/
+    public function parametersSearch(Request $request){
+	
+	global $models;
+	
+	$categoryWiseParamenter = array();
+	
+	if(!empty($request['formData'])){
+		    parse_str($request['formData'],$formData);
+		    $productTestParametersList = DB::table('product_test_dtl')
+					    ->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+					    ->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+					    ->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+					    ->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+					    ->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+					    ->select('product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+					    ->where('product_test_dtl.test_id',$formData['test_id'])
+					    ->where('test_parameter.test_parameter_name','like','%'.$formData['keyword'].'%')
+					    ->orderBy('product_test_dtl.parameter_sort_by','asc')
+					    ->get();
+		    
+		    if(!empty($productTestParametersList)){
+			    foreach($productTestParametersList as $key => $values){
+				    $categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     	= $values->category_sort_by;
+				    $categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     		= $values->test_para_cat_id;
+				    $categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+				    $categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] 		= $values;
+			    }
+			    $categoryWiseParamenter = array_values($categoryWiseParamenter);
+		    }
+		    $categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+		    //echo'<pre>'; print_r($productTestParametersList); die;	
+	    }
+	    return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr]);
+    }
+	
+    /*********************
+    * search on edit product test parameter popup
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    ***********************/
+    public function EditParametersSearch(Request $request){
+	
+	global $order,$models;
+	
+	$categoryWiseParamenter = array();
+	
+        if(!empty($request['formData'])){
+	    
+	    parse_str($request['formData'],$formData);
+	    
+	    $orderId = !empty($formData['order_id']) ? $formData['order_id'] : '';
+	    
+	    $productTestParametersList = DB::table('product_test_dtl')
+			->join('product_test_hdr','product_test_dtl.test_id','product_test_hdr.test_id')
+			->join('product_master','product_master.product_id','product_test_hdr.product_id')
+			->join('test_parameter','product_test_dtl.test_parameter_id','test_parameter.test_parameter_id')
+			->join('test_parameter_categories','test_parameter_categories.test_para_cat_id','test_parameter.test_parameter_category_id')			
+			->leftJoin('equipment_type','equipment_type.equipment_id','product_test_dtl.equipment_type_id')			
+			->leftJoin('method_master','method_master.method_id','product_test_dtl.method_id')			
+			->select('order_parameters_detail.product_test_parameter','order_parameters_detail.order_id','product_test_dtl.*','test_parameter.test_parameter_code','test_parameter.test_parameter_name','equipment_type.equipment_name','method_master.method_name','test_parameter_categories.test_para_cat_id','test_parameter_categories.test_para_cat_name','test_parameter_categories.category_sort_by')
+			->leftJoin('order_parameters_detail', function($join) use ($orderId){                    
+			    $join->on('order_parameters_detail.product_test_parameter', '=', 'product_test_dtl.product_test_dtl_id');
+			    $join->where('order_parameters_detail.order_id',$orderId);
+			})
+			->where('product_test_dtl.test_id',$formData['test_id'])
+			->where('test_parameter.test_parameter_name','like','%'.$formData['keyword'].'%')
+			->orderBy('product_test_dtl.parameter_sort_by','asc')
+			->groupBy('product_test_dtl.product_test_dtl_id')
+			->get();
+			
+	    if(!empty($productTestParametersList)){
+		    foreach($productTestParametersList as $key => $values){
+			$analysis_id =  !empty($orderDetailOrderId) ? $orderDetailOrderId->analysis_id : '' ;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categorySortBy']     	= $values->category_sort_by;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryId']     		= $values->test_para_cat_id;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryName']     		= $values->test_para_cat_name;
+			$categoryWiseParamenter[$values->test_para_cat_id]['categoryParams'][] 		= $values;
+		    }
+		    $categoryWiseParamenter = array_values($categoryWiseParamenter);
+	    }
+	    $categoryWiseParamenterSortedArr = $models->sortArrayAscOrder($categoryWiseParamenter);
+	}
+	return response()->json(['productTestParametersList' => $categoryWiseParamenterSortedArr]);
+    }
+    
+    /*********************
+    * function to unhold a order
+    * @param  int  $id
+    * @return \Illuminate\Http\Response
+    ***********************/
+    public function unHoldOrder($order_id){
+	
+	global $order,$models,$reports;
+	
+	$error   = '0';
+	$message =  config('messages.message.error');
+
+	$orderStatus = $order->getLastOrderStage($order_id);
+	$unHoldOrder = DB::table('order_master')->where('order_master.order_id','=',$order_id)->update(['status' => $orderStatus,'hold_reason'=>'']);
+	if(!empty($unHoldOrder)){
+	    $order->generateUpdateOrderExpectedDueDate($order_id,$order->getFormatedDateTime(date('Y-m-d'),'y-m-d'));
+	    $order->updateOrderStausLog($order_id,$orderStatus);
+	    $error   = '1';
+	    $message = 'You can proceed this order for next phases.';
+	}else{
+	    $error   = '0';
+	    $message = 'Order cannot be unhold.';
+	}
+	return response()->json(array('error' => $error, 'message' => $message));
+    }
+
+}

@@ -1,0 +1,157 @@
+/***************************** Dropzone Styling *****************************/
+
+/**
+ * The dnd-list should always have a min-height,
+ * otherwise you can't drop to it once it's empty
+ */
+.advancedDemo .dropzone ul[dnd-list] {
+    min-height: 42px;
+    margin: 0px;
+    padding-left: 0px;
+}
+
+.advancedDemo .dropzone li {
+    display: block;
+}
+
+/**
+ * Reduce opacity of elements during the drag operation. This allows the user
+ * to see where he is dropping his element, even if the element is huge. The
+ * .dndDragging class is automatically set during the drag operation.
+ */
+.advancedDemo .dropzone .dndDragging {
+    opacity: 0.7;
+}
+
+/**
+ * The dndDraggingSource class will be applied to the source element of a drag
+ * operation.
+ */
+.advancedDemo .dropzone .dndDraggingSource {
+    opacity: 0.5;
+}
+
+/**
+ * An element with .dndPlaceholder class will be added as child of the dnd-list
+ * while the user is dragging over it.
+ */
+.advancedDemo .dropzone .dndPlaceholder {
+    background-color: #ddd !important;
+    display: block;
+    min-height: 42px;
+}
+
+/***************************** Element type specific styles *****************************/
+
+.advancedDemo .dropzone .itemlist {
+    min-height: 120px !important;
+}
+
+.advancedDemo .dropzone .itemlist > li {
+	background-color: rgba(191, 188, 188, 0.23);
+    border: #959191 dotted 1px;
+    border-radius: .25em;
+    color: #181616;
+    float: left;
+    font-weight: 700;
+    height: 30px;
+    margin: 5px;
+    padding: 3px;
+    text-align: center;
+    width: 328px;
+}
+
+.advancedDemo .dropzone .container-element {
+    margin: 10px;
+}
+.box-blue {
+    border-color: #bce8f1;
+    width: 96%;
+}
+
+.box-yellow {
+    border-color: #faebcc;
+    float: left;
+}
+.box-yellow ul {
+    width: 50%;
+    float: left;
+}
+.box-yellow li {
+    width: 100%;
+    display: -webkit-inline-box !important;
+}
+.refreshBtn{
+	margin-right: 5px !important;margin-top: 2px;
+}
+.backtoNav{
+	margin-right: 19px !important;margin-top: 2px;
+}
+
+/**
+ * The dnd-list should always have a min-height,
+ * otherwise you can't drop to it once it's empty
+ */
+.simpleDemo ul[dnd-list] {
+    padding-left: 0px;
+	margin-top: -26px;
+    margin-left: -9px;
+}
+.simpleDemo.box-blue {
+    border-color: #bce8f1;
+    width: 100% !important;
+}
+/**
+ * The dndDraggingSource class will be applied to
+ * the source element of a drag operation. It makes
+ * sense to hide it to give the user the feeling
+ * that he's actually moving it.
+ */
+.simpleDemo ul[dnd-list] .dndDraggingSource {
+    display: none;
+}
+
+/**
+ * An element with .dndPlaceholder class will be
+ * added to the dnd-list while the user is dragging
+ * over it.
+ */
+.simpleDemo ul[dnd-list] .dndPlaceholder {
+    background-color: #ddd;
+    display: block;
+    min-height: 42px;
+}
+
+.simpleDemo ul[dnd-list] li {
+    background-color: rgba(191, 188, 188, 0.23);
+    border: #959191 dotted 1px;
+    border-radius: .25em;
+    color: #181616;
+    float: left;
+    font-weight: 700;
+    height: 30px;
+    margin: 5px;
+    padding: 3px;
+    text-align: center;
+    width: 328px;
+}
+
+/**
+ * Show selected elements in green
+ */
+.simpleDemo ul[dnd-list] li.selected {
+    background-color: #dff0d8;
+    color: #3c763d;
+}
+
+.order-select {
+    float: right;
+    margin-left: 718px;
+    margin-top: -7px;
+}
+.box-yellow ul ul {
+    width: 99% !important;
+}
+.parameterUl li{
+	width : 100% !important;
+}

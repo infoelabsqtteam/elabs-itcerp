@@ -1,0 +1,553 @@
+<?php
+
+/*****************************************************
+ *Description : Sample Controller File
+ *Created By  : Praveen-Singh
+ *Created On  : 20-Dec-2016
+ *Modified On : 20-Dec-2016
+ *Package     : ITC-ERP-PKL
+ ******************************************************/
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+use App\Http\Requests;
+use Auth;
+use App\Sample;
+use App\Models;
+use App\SendMail;
+use App\TrfHdr;
+use App\Order;
+use Validator;
+use DB;
+use App\Helpers\Helper;
+use App\Helpers\SimpleImage;
+use Route;
+use Session;
+
+class SamplesController extends Controller
+{
+
+	/**
+	 * protected Variable.
+	 */
+	protected $auth;
+
+	/**
+	 * Create a new controller instance.
+	 *
+	 * @return void
+	 */
+	public function __construct()
+	{
+
+		global $models, $sample, $order, $mail, $trfHdr;
+
+		$sample = new  Sample();
+		$models = new  Models();
+		$mail   = new  SendMail();
+		$trfHdr = new  TrfHdr();
+		$order = new  Order();
+
+		//Auth Session
+		$this->middleware('auth');
+
+		$this->middleware(function ($request, $next) {
+
+			$this->auth = Auth::user();
+			parent::__construct($this->auth);
+
+			//Checking current request is allowed or not
+			$allowedAction = array('index', 'navigation');
+			$actionData    = explode('@', Route::currentRouteAction());
+			$action        = !empty($actionData[1]) ? trim(strtolower($actionData[1])) : '0';
+			if (defined('NOTALlOWEDTONAVIGATE') && empty(NOTALlOWEDTONAVIGATE) && in_array($action, $allowedAction)) {
+				return redirect('dashboard')->withErrors('Permission Denied!');
+			}
+			return $next($request);
+		});
+	}
+
+	/**
+	 * Display a listing of the resource.
+	 *
+	 * @return \Illuminate\Http\Response
+	 */
+	public function index()
+	{
+
+		global $models, $sample;
+
+		$user_id            = defined('USERID') ? USERID : '0';
+		$division_id   	  	= defined('DIVISIONID') ? DIVISIONID : '0';
+		$department_ids     = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : '0';
+		$role_ids           = defined('ROLE_IDS') ? ROLE_IDS : '0';
+		$equipment_type_ids = defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : '0';
+
+		return view('sales.samples.index', ['title' => 'Samples', '_samples' => 'active', 'user_id' => $user_id, 'division_id' => $division_id, 'equipment_type_ids' => $equipment_type_ids]);
+	}
+
+	/**
+	 * Display the specified resource.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function getDivisionWiseSamples($division_id, $sample_status)
+	{
+
+		global $models, $sample;
+
+		$error    = '0';
+		$message  = config('messages.message.error');
+		$data     = '';
+		$user_id  = defined('USERID') ? USERID : '0';
+
+		$samplesObj = DB::table('samples')
+			->join('divisions', 'divisions.division_id', 'samples.division_id')
+			->join('product_categories', 'product_categories.p_category_id', 'samples.product_category_id')
+			->leftJoin('customer_master', 'customer_master.customer_id', 'samples.customer_id')
+			->leftJoin('city_db', 'city_db.city_id', 'customer_master.customer_city')
+			->leftJoin('trf_hdrs', 'trf_hdrs.trf_id', 'samples.trf_id')
+			->join('sample_modes', 'sample_modes.sample_mode_id', 'samples.sample_mode_id')
+			->join('users as createdBy', 'createdBy.id', 'samples.created_by')
+			->select('samples.*', 'trf_hdrs.trf_no', 'divisions.division_name', 'samples.customer_email as new_customer_email', 'samples.customer_name as customer_name_new', 'customer_master.customer_name', 'customer_master.customer_email', 'product_categories.p_category_name', 'sample_modes.sample_mode_name', 'createdBy.name as createdByName', 'city_db.city_name as customer_city');
+
+		if (defined('IS_SAMPLER') && IS_SAMPLER) {
+			$samplesObj->where('samples.created_by', $user_id);
+		}
+		if (!empty($division_id) && is_numeric($division_id)) {
+			$samplesObj->where('samples.division_id', $division_id);
+		}
+		if (isset($sample_status) && is_numeric($sample_status)) {
+			$samplesObj->where('samples.sample_status', $sample_status);
+		}
+
+		$samples = $samplesObj->orderBy('samples.sample_id', 'DESC')->get();
+		$error   = !empty($samples) ? '1' : '0';
+		$message = $error ? '' : $message;
+
+		//to formate created and updated date		   
+		$models->formatTimeStampFromArray($samples, DATETIMEFORMAT);
+
+		return response()->json(array('error' => $error, 'message' => $message, 'sampleDataList' => $samples));
+	}
+	/**
+	 * Display the specified resource.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function getBranchWiseSamplesPdf(Request $request)
+	{
+
+		global $models, $sample;
+
+		$error    = '0';
+		$message  = config('messages.message.error');
+		$data     = '';
+		$user_id  = defined('USERID') ? USERID : '0';
+
+		if ($request->isMethod('post') && !empty($request->generate_sample_documents)) {
+
+			$downloadType = $request->generate_sample_documents;
+
+			$pdfHeaderContent  = DB::table('template_dtl')
+				->join('samples', 'samples.division_id', 'template_dtl.division_id')
+				->select('template_dtl.header_content', 'template_dtl.footer_content')
+				->where('template_dtl.template_type_id', '=', '1')
+				->where('template_dtl.template_status_id', '=', '1')
+				->first();
+
+			$samplesObj = DB::table('samples')
+				->join('divisions', 'divisions.division_id', 'samples.division_id')
+				->join('department_product_categories_link', 'department_product_categories_link.product_category_id', 'samples.product_category_id')
+				->join('departments', 'departments.department_id', 'department_product_categories_link.department_id')
+				->join('product_categories', 'product_categories.p_category_id', 'samples.product_category_id')
+				->leftJoin('customer_master', 'customer_master.customer_id', 'samples.customer_id')
+				->leftJoin('city_db', 'city_db.city_id', 'customer_master.customer_city')
+				->leftJoin('trf_hdrs', 'trf_hdrs.trf_id', 'samples.trf_id')
+				->join('sample_modes', 'sample_modes.sample_mode_id', 'samples.sample_mode_id')
+				->join('sample_status_default', 'sample_status_default.sample_status_id', 'samples.sample_status')
+				->join('users as createdBy', 'createdBy.id', 'samples.created_by')
+				->select('samples.sample_no', 'divisions.division_name as branch', 'departments.department_name as department', 'samples.sample_current_date as sample_date', 'customer_master.customer_name', 'city_db.city_name as place', 'customer_master.customer_email', 'sample_modes.sample_mode_name', 'samples.sample_mode_description as description', 'samples.remarks', 'trf_hdrs.trf_no', 'sample_status_default.sample_status_name as status', 'createdBy.name as created_by');
+
+			if (!empty($request->division_id)) {
+				$samplesObj->where('samples.division_id', $request->division_id);
+			}
+			if (isset($request->sample_status_id) && is_numeric($request->sample_status_id)) {
+				$samplesObj->where('samples.sample_status', $request->sample_status_id);
+			}
+			$samples = $samplesObj->orderBy('samples.sample_id', 'DESC')->get();
+			$models->formatTimeStampFromArrayExcel($samples, DATEFORMATEXCEL);
+
+			if (!empty($samples)) {
+
+				$samplesData 				 = !empty($samples) ? json_decode(json_encode($samples), true) : array();
+				$samplesData 				 = $models->unsetFormDataVariablesArray($samplesData, array('canDispatchOrder'));
+				$response['heading'] 		 = 'Samples List' . '(' . count($samplesData) . ')';
+				$response['tableHead'] 		 = !empty($samplesData) ? array_keys(end($samplesData)) : array();
+				$response['tableBody'] 		 = !empty($samplesData) ? $samplesData : array();
+				$response['tablefoot']		 = array();
+				$response['mis_report_name'] = 'sample_document';
+
+				if ($downloadType  == 'PDF') {
+
+					$response['header_content']	= $pdfHeaderContent->header_content;
+					$response['footer_content']	= $pdfHeaderContent->footer_content;
+					return $models->downloadPDF($response, $contentType = 'samplesheet');
+
+				} elseif ($downloadType == 'Excel') {
+					return $models->generateExcel($response);
+				}
+			} else {
+				Session::put('errorMsg', config('messages.message.noRecordFound'));
+				return redirect('dashboard');
+			}
+		}
+		Session::put('errorMsg', config('messages.message.fileDownloadErrorMsg'));
+		return redirect('dashboard');
+	}
+
+	/**
+	 * Store a newly created resource in storage.
+	 *
+	 * @param  \Illuminate\Http\Request  $request
+	 * @return \Illuminate\Http\Response
+	 */
+	public function createDivisionSample(Request $request)
+	{
+
+		global $models, $sample, $order, $mail, $trfHdr;
+
+		$mailTemplateType 	= '1';
+		$sender 		=  Auth::user()->name;
+		$error    	  	= '0';
+		$message  	  	= config('messages.message.error');
+		$data     	  	= '';
+		$formData 	  	= array();
+		$currentDateTime  	= !defined('CURRENTDATETIME') ? CURRENTDATETIME : date('Y-m-d H:i:s');
+
+		//Saving record in orders table
+		if (!empty($request->formData) && $request->isMethod('post')) {
+
+			parse_str($request->formData, $formData);
+			$formData = array_filter($formData);
+
+			if (!empty($formData)) {
+				$customer_emailExist = !empty($formData['customer_email']) ? $sample->isCustomerExist($formData['customer_email']) : '';
+				if (empty($formData['division_id'])) {
+					$message = config('messages.message.divisionNameErrorMsg');
+				} else if (empty($formData['customer_id']) && empty($formData['customer_name'])) {
+					$message = config('messages.message.sampleCustomerNameRequired');
+				} else if (!empty($formData['customer_email']) && !empty($customer_emailExist)) {
+					$message = config('messages.message.sampleCustomerEmailRequired');
+				} else if (empty($formData['product_category_id'])) {
+					$message = config('messages.message.productCategoryNameRequired');
+				} else if (empty($formData['sample_mode_id'])) {
+					$message = config('messages.message.sampleModeRequired');
+				} else {
+					//default Message
+					$message = config('messages.message.savedError');
+
+					//Unsetting the variable from request data
+					$formData = $models->unsetFormDataVariables($formData, array('_token'));
+
+					//Adding New Dynamic Fields
+					$formData['sample_date'] 	   	= $sample->getFormatedSampleDate($formData['sample_date'], $currentDateTime);
+					$formData['sample_current_date']	= $currentDateTime;
+					$formData['sample_no']   	   	= $sample->generateSampleNumber($formData);
+					$formData['sample_status']     		= empty($formData['customer_id']) ? '2' : '0';
+					$formData['internal_transfer'] 		= '0';
+					$formData['created_by']  	   	= USERID;
+
+					if (!empty($formData['sample_no'])) {
+						$sampleId = DB::table('samples')->insertGetId($formData);
+						if (!empty($sampleId)) {
+
+							//send mail to new customer
+							if (!empty($formData['customer_name'])) {
+								$requiredData = array('sample_id' => $sampleId, 'mailTemplateType' => $mailTemplateType, 'customer_email' => '', 'sender' => $sender);
+								$mail->sendMail($requiredData);
+							}
+
+							//Updating TRF Status in Web and ERP Module
+							if (!empty($formData['trf_id'])) {
+								$trfHdr->updateTRFStatusInWebAndERP($formData['trf_id']);	//Updating TRF Status in Web and ERP Module
+								$order->createProductMasterAliaFromTrfSampleName($formData['trf_id']);	//Updating TRF Status in Web and ERP Module
+							}
+
+							$error   = '1';
+							$data    = $sampleId;
+							$message = config('messages.message.saved');
+						}
+					}
+				}
+			}
+		}
+		return response()->json(array('error' => $error, 'message' => $message, 'data' => $data));
+	}
+
+	/**
+	 * Store a newly created resource in storage.
+	 *
+	 * @param  \Illuminate\Http\Request  $request
+	 * @return \Illuminate\Http\Response
+	 */
+	public function createInternalTransferSample(Request $request)
+	{
+
+		global $models, $sample;
+
+		$error             = '0';
+		$message           = config('messages.message.error');
+		$data     	   = '';
+		$mailTemplateType  = '2';
+		$submittedFormData = array();
+
+		//Saving record in orders table
+		if (!empty($request->formData) && $request->isMethod('post')) {
+
+			//Parsing Form Value
+			parse_str($request->formData, $submittedFormData);
+
+			if (!empty($submittedFormData['it_sample_id']) && !empty($submittedFormData['it_sample_product_category_id'])) {
+
+				//Unsetting the variable from request data
+				$formData = (array) DB::table('samples')->where('samples.sample_id', $submittedFormData['it_sample_id'])->first();
+				$formData = array_filter($formData);
+
+				//Checking if Sample already transfered to the Other Department Or Not
+				$checkSampleTransferExistence = DB::table('samples')->where('samples.sample_no', $formData['sample_no'])->where('samples.product_category_id', $submittedFormData['it_sample_product_category_id'])->first();
+
+				if (empty($checkSampleTransferExistence)) {
+
+					if (empty($formData['division_id'])) {
+						$message = config('messages.message.divisionNameErrorMsg');
+					} else if (empty($formData['customer_id'])) {
+						$message = config('messages.message.sampleCustomerNameRequired');
+					} else if (empty($formData['product_category_id'])) {
+						$message = config('messages.message.productCategoryNameRequired');
+					} else if (empty($formData['sample_mode_id'])) {
+						$message = config('messages.message.sampleModeRequired');
+					} else {
+						//default Message
+						$message = config('messages.message.savedError');
+
+						//Unsetting the variable from request data
+						$formData = $models->unsetFormDataVariables($formData, array('sample_id', 'created_at', 'updated_at'));
+
+						//Adding New Dynamic Fields
+						$formData['product_category_id'] = $submittedFormData['it_sample_product_category_id'];
+						$formData['internal_transfer']   = '1';
+						$formData['sample_status']     	 = '0';
+						$formData['created_by']  	 = USERID;
+
+						if (!empty($formData['sample_no'])) {
+							$sampleId = DB::table('samples')->insertGetId($formData);
+							if (!empty($sampleId)) {
+								$error   = '1';
+								$data    = $sampleId;
+								$message = config('messages.message.saved');
+							}
+						}
+					}
+				} else {
+					$message  = config('messages.message.error');
+				}
+			}
+		}
+		return response()->json(array('error' => $error, 'message' => $message, 'data' => $data));
+	}
+
+	/**
+	 * Display the specified resource.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function viewSample($sample_id)
+	{
+
+		global $models, $sample, $trfHdr;
+
+		$error    = '0';
+		$message  = config('messages.message.error');
+		$data     = '';
+		$trfDataList = array();
+
+		$samples = DB::table('samples')
+			->join('divisions', 'divisions.division_id', 'samples.division_id')
+			->join('product_categories', 'product_categories.p_category_id', 'samples.product_category_id')
+			->leftJoin('customer_master', 'customer_master.customer_id', 'samples.customer_id')
+			->join('state_db', 'state_db.state_id', 'customer_master.customer_state')
+			->join('city_db', 'customer_master.customer_city', 'city_db.city_id')
+			->join('sample_modes', 'sample_modes.sample_mode_id', 'samples.sample_mode_id')
+			->join('users as createdBy', 'createdBy.id', 'samples.created_by')
+			->select('samples.*', 'divisions.division_name',DB::raw('CONCAT(customer_master.customer_code,"/",customer_master.customer_name,"/",city_db.city_name) AS customerNewName'), 'samples.customer_name as customer_name_new', 'customer_master.customer_name', 'product_categories.p_category_name', 'sample_modes.sample_mode_name', 'createdBy.name as createdByName')
+			->where('samples.sample_id', $sample_id)
+			->orderBy('samples.sample_id', 'DESC')
+			->first();
+
+		//Getting TRF Detail if Sample receing has created with TRF No.
+		if (!empty($samples->trf_id)) {
+			$trfDataList = $trfHdr->getRow($samples->trf_id);
+		}
+
+		$error   = !empty($samples) ? '1' : '0';
+		$message = $error ? '' : $message;
+
+		//to formate created and updated date		   
+		$models->formatTimeStamp($samples, MYSQLDATFORMAT);
+
+		return response()->json(array('error' => $error, 'message' => $message, 'sampleDetailList' => $samples, 'trfDataList' => $trfDataList));
+	}
+
+	/**
+	 * Show the form for editing the specified resource.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function updateDivisionSample(Request $request)
+	{
+
+		global $models, $sample, $trfHdr;
+
+		$error    	 = '0';
+		$message  	 = config('messages.message.error');
+		$data     	 = '';
+		$formData 	 = array();
+		$currentDateTime = !defined('CURRENTDATETIME') ? CURRENTDATETIME : date('Y-m-d H:i:s');
+
+		if ($request->isMethod('post') && !empty($request['formData'])) {
+
+			//pasrse searlize data 				
+			parse_str($request['formData'], $formData);
+			$sampleId = !empty($formData['sample_id']) ? $formData['sample_id'] : '0';
+
+			if (empty($formData['division_id'])) {
+				$message = config('messages.message.divisionNameErrorMsg');
+			} else if (empty($formData['customer_id']) && empty($formData['customer_name'])) {
+				$message = config('messages.message.customerNameRequired');
+			} else if (empty($formData['product_category_id'])) {
+				$message = config('messages.message.productCategoryNameRequired');
+			} else if (empty($formData['sample_mode_id'])) {
+				$message = config('messages.message.sampleModeRequired');
+			} else if (!empty($formData['trf_id']) && !$sample->validateTrfDetailOnEdit($formData)) {
+				$message = config('messages.message.trfNumberUpdateError');
+			} else {
+				//Default Message
+				$message = config('messages.message.updatedError');
+
+				//Default Form Data
+				$formData['sample_no']      	 = $sample->reGenerateSampleNumber($formData, $sampleId);
+				$formData['sample_date']    	 = $sample->updateSampleDate($formData, $sampleId);
+				$formData['sample_current_date'] = $sample->updateSampleCurrentDate($formData, $sampleId);
+				$formData['sample_status']  	 = empty($formData['customer_id']) ? '2' : '0';
+
+				//Unsetting the variable from request data
+				$formData = $models->unsetFormDataVariables($formData, array('_token', 'sample_id', 'sample_date_org'));
+
+				if (!empty($sampleId) && !empty($formData)) {
+					if (DB::table('samples')->where('samples.sample_id', $sampleId)->update($formData)) {
+						$error    = '1';
+						$message = config('messages.message.updated');
+					} else {
+						$error   = '1';
+						$message = config('messages.message.savedNoChange');
+					}
+				}
+			}
+		}
+		return response()->json(['error' => $error, 'message' => $message, 'data' => $data, 'sampleId' => $sampleId]);
+	}
+
+	/**
+	 * Remove the specified resource from storage.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function deleteDivisionSample(Request $request, $sampleId)
+	{
+		$error    = '0';
+		$message  = '';
+		$data     = '';
+
+		try {
+			if (DB::table('samples')->where('samples.sample_id', '=', $sampleId)->delete()) {
+				$error   = '1';
+				$message = config('messages.message.deleted');
+			} else {
+				$message = config('messages.message.deletedError');
+			}
+		} catch (\Illuminate\Database\QueryException $ex) {
+			$message = config('messages.message.deletedErrorFKC');
+		}
+		return response()->json(['error' => $error, 'message' => $message]);
+	}
+
+	/**
+	 * Remove the specified resource from storage.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function closeDivisionSample(Request $request, $sampleId)
+	{
+
+		$error    = '0';
+		$message  = '';
+		$data     = '';
+
+		try {
+			if ($sampleId) {
+				$orderData = DB::table('order_master')->select('order_master.order_id', DB::raw('MAX(order_master.booking_date) as sample_booked_date'))->where('order_master.sample_id', '=', $sampleId)->first();
+				if (!empty($orderData->sample_booked_date)) {
+					if (DB::table('samples')->where('samples.sample_id', '=', $sampleId)->update(['samples.sample_booked_date' => $orderData->sample_booked_date, 'samples.sample_status' => '1'])) {
+						$error   = '1';
+						$message = config('messages.message.updated');
+					} else {
+						$message = config('messages.message.updatedError');
+					}
+				} else {
+					$message = config('messages.message.sameBookingDateUpdateError');
+				}
+			} else {
+				$message = config('messages.message.updatedError');
+			}
+		} catch (\Illuminate\Database\QueryException $ex) {
+			$message = config('messages.message.updatedError');
+		}
+		return response()->json(['error' => $error, 'message' => $message]);
+	}
+
+	/**
+	 * Remove the specified resource from storage.
+	 *
+	 * @param  int  $id
+	 * @return \Illuminate\Http\Response
+	 */
+	public function getTrfInvolvedCustomer($trfId)
+	{
+
+		global $models, $sample, $mail, $trfHdr;
+
+		$error    = '0';
+		$message  = '';
+		$customerId = '0';
+
+		try {
+			if ($trfId) {
+				$trfData = $trfHdr->getRow($trfId);
+				$customerId = !empty($trfData->trf_customer_id) ? $trfData->trf_customer_id : '0';
+				$error = '1';
+			}
+		} catch (\Illuminate\Database\QueryException $ex) {
+			$message = config('messages.message.error');
+		}
+		return response()->json(['error' => $error, 'message' => $message, 'customer_id' => $customerId]);
+	}
+}

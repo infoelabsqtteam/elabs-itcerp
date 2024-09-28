@@ -1,0 +1,231 @@
+<div class="row" ng-hide="IsViewReportList">
+
+    <!--/form-->
+    <form class="form-inline" method="POST" role="form" id="erpFilterReportForm" name="erpFilterReportForm" action="{{ url('sales/reports/generate-branch-wise-report-pdf') }}">
+        
+	<!--header-->
+	<div class="row header">        
+	    <div role="new" class="navbar-form navbar-left">            
+		<span class="pull-left"><strong id="form_title" title="Refresh" ng-click="funRefreshReportByStatus()"><span>Total</span><span ng-if="getBranchWiseReports.length">([[getBranchWiseReports.length]])</span></strong></span>
+	    </div>
+	    <div class="col-sm-9 summary" ng-if="summaryStatistics"><ul><li>Pendency : [</li><li ng-repeat="(key, value) in summaryStatistics">[[key]] : [[value]]</li><li>]</li></ul></div>
+	    <div role="new" class="navbar-form navbar-right">
+		<div class="searchbox">
+		    <input type="text" ng-keypress="funEnterPressHandler($event)" placeholder="Search" ng-model="filterReport.keyword" ng-change="funSearchReportByStatus(filterReport.keyword)" name="keyword" class="form-control ng-pristine ng-untouched ng-valid autoFocus">
+		</div>
+	    </div>
+	</div>
+	<!--header-->
+	
+	<!--listing record--> 
+	<div id="no-more-tables">
+	
+	    <!--Filter Action-->
+	    @include('sales.reports.listFilter')
+	    <!--/Filter Action-->
+	   
+	    <!--table data-->
+	    <div class="row tableRecord">
+		<table class="col-sm-12 table-striped table-condensed cf">
+		    <thead class="cf">
+			<tr>                            
+			    <th>
+				<label ng-click="sortBy('order_no')" class="sortlabel">Order No.</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'order_no'" class="sortorder reverse"></span>
+			    </th>
+			    <th ng-if="{{$division_id}} == 0">
+				<label class="sortlabel" ng-click="sortBy('division_name')">Branch</label>
+				<span class="sortorder" ng-show="predicate === 'division_name'" ng-class="{reverse:reverse}"></span>
+			    </th>
+			    <th>
+				<label ng-click="sortBy('stb_prototype_no')" class="sortlabel">Prototype No.</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'stb_prototype_no'" class="sortorder reverse"></span>
+			    </th>
+			    <th ng-if="{{!defined('IS_TESTER')}}">
+				<label ng-click="sortBy('customer_name')" class="sortlabel">Customer Name</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'customer_name'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th ng-if="{{!defined('IS_TESTER')}}">
+				<label ng-click="sortBy('customer_name')" class="sortlabel">Place</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'city_name'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th ng-if="{{!defined('IS_TESTER')}}">
+				<label ng-click="sortBy('billing_type')" class="sortlabel">Billing Type</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'billing_type'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th>
+				<label ng-click="sortBy('order_date')" class="sortlabel">Order Date </label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'order_date'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th ng-if="{{!defined('IS_DISPATCHER') && !defined('IS_TESTER')}}">
+				<label ng-click="sortBy('expected_due_date')" class="sortlabel">Expected Due Date</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'expected_due_date'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th ng-if="{{defined('IS_ADMIN') || defined('IS_TESTER')}}">
+				<label ng-click="sortBy('dept_due_date')" class="sortlabel">Department Due Date</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'dept_due_date'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th>
+				<label ng-click="sortBy('nabl_no')" class="sortlabel">NABL No </label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'nabl_no'" class="sortorder reverse"></span>
+			    </th>
+			    <th>
+				<label ng-click="sortBy('report_date')" class="sortlabel">Report Date </label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'report_date'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th>
+				<label ng-click="sortBy('sample_description')" class="sortlabel">Sample Description</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'sample_description'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th class="width8">
+				<label ng-click="sortBy('sample_priority_name')" class="sortlabel">Sample Priority</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'sample_priority_name'" class="sortorder reverse ng-hide"></span>
+			    </th> 
+			    <th class="width8" ng-if="{{!defined('IS_DISPATCHER')}}">
+				<label ng-click="sortBy('remarks')" class="sortlabel">Remarks</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'remarks'" class="sortorder reverse ng-hide"></span>
+			    </th>				
+			    <th class="width8" ng-if="{{(defined('IS_ADMIN') && IS_ADMIN) || (defined('IS_TESTER') && IS_TESTER)}}">
+				<label ng-click="sortBy('olsd_cstp_no')" class="sortlabel">STP No.</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'olsd_cstp_no'" class="sortorder reverse ng-hide"></span>
+			    </th>			    
+			    <th class="width8">
+				<label ng-click="sortBy('order_status_time')" class="sortlabel">Status Time</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'order_status_time'" class="sortorder reverse ng-hide"></span>
+			    </th> 
+			    <th class="width8">
+				<label ng-click="sortBy('order_status_name')" class="sortlabel">Status</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'order_status_name'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th class="width8" ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}">
+				<label ng-click="sortBy('dispatch_date')" class="sortlabel">Dispatched Date</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'dispatch_date'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th class="width10" ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}">
+				<label ng-click="sortBy('dispatch_by')" class="sortlabel">Dispatched By</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'dispatch_by'" class="sortorder reverse ng-hide"></span>
+			    </th>
+			    <th class="width8">
+				<label ng-click="sortBy('createdByName')" class="sortlabel">Created By</label>
+				<span ng-class="{reverse:reverse}" ng-show="predicate === 'createdByName'" class="sortorder reverse ng-hide"></span>
+			    </th>						
+			    <th class="width10">Action
+				<button type="button" title="Filter" ng-hide="multisearchBtn" ng-click="openMultisearch()" class="pull-right btn btn-primary"><i class="fa fa-filter"></i></button>
+			    </th>
+			</tr>
+		    </thead>
+		    <tbody>
+			<tr ng-hide="multiSearchTr">
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_order_no)" name="search_order_no" ng-model="filterReport.search_order_no" class="multiSearch form-control width80" placeholder="Order No"></td>
+			    <td class="width10" ng-if="{{$division_id}} == 0"></td>
+			    <td></td>
+			    <td ng-if="{{!defined('IS_TESTER')}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_customer_name)" name="search_customer_name" ng-model="filterReport.search_customer_name"  class="multiSearch form-control width80" placeholder="Customer Name"></td>
+			    <td ng-if="{{!defined('IS_TESTER')}}"></td>
+			    <td ng-if="{{!defined('IS_TESTER')}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_billing_type)" name="search_billing_type" ng-model="filterReport.search_billing_type" class="multiSearch form-control width80" placeholder="Billing Type"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_order_date)" name="search_order_date" ng-model="filterReport.search_order_date" class="multiSearch form-control width80" placeholder="Order Date"></td>
+			    <td ng-if="{{!defined('IS_DISPATCHER') && !defined('IS_TESTER')}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.expected_due_date)" name="search_expected_due_date" ng-model="filterReport.expected_due_date" class="multiSearch form-control width80" placeholder="Expected Due Date"></td>
+			    <td ng-if="{{defined('IS_ADMIN') || defined('IS_TESTER')}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.dept_due_date)" name="search_dept_due_date" ng-model="filterReport.dept_due_date" class="multiSearch form-control width80" placeholder="Expected Due Date"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_nabl_no)" name="search_nabl_no" ng-model="filterReport.search_nabl_no" class="multiSearch form-control width80" placeholder="NABL No"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_report_date)" name="search_report_date" ng-model="filterReport.search_report_date" class="multiSearch form-control width80" placeholder="Report Date"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_sample_description)" name="search_sample_description" ng-model="filterReport.search_sample_description" class="multiSearch form-control width80" placeholder="Sample Description"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_sample_priority_name)" name="search_sample_priority_name" ng-model="filterReport.search_sample_priority_name"  class="multiSearch form-control width80" placeholder="Sample Priority"></td>
+			    <td ng-if="{{(defined('IS_ADMIN') && IS_ADMIN) || (defined('IS_TESTER') && IS_TESTER)}}"></td>
+			    <td ng-if="{{!defined('IS_DISPATCHER')}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_remarks)" name="search_remarks" ng-model="filterReport.search_remarks" class="multiSearch form-control width80" placeholder="Remarks"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_status_time)" name="search_status_time" ng-model="filterReport.search_status_time" class="multiSearch form-control width80" placeholder="Status Time"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_status)" name="search_status" ng-model="filterReport.search_status" class="multiSearch form-control width80" placeholder="Status"></td>
+			    <td ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_dispatch_date)" name="search_dispatch_date" ng-model="filterReport.search_dispatch_date" class="multiSearch form-control width80" placeholder="Dispatch date"></td>
+			    <td ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}"><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_dispatch_by)" name="search_dispatch_by" ng-model="filterReport.search_dispatch_by" class="multiSearch form-control width80" placeholder="Dispatch by"></td>
+			    <td><input type="text" ng-keypress="funEnterPressHandler($event)" ng-change="getMultiSearch(filterReport.search_created_by)" name="search_created_by" ng-model="filterReport.search_created_by" class="multiSearch form-control " placeholder="Created By"></td>
+			    <td class="width10">
+				<button type="button" ng-click="refreshMultisearch(divisionID)" title="Refresh" class="btn btn-primary btn-sm"><i class="fa fa-refresh" aria-hidden="true"></i></button>
+				<button type="button" ng-click="closeMultisearch();funRefreshReportByStatus();" title="Close" class="btn btn-default btn-sm"><i class="fa fa-times" aria-hidden="true"></i></button>
+			    </td>
+			</tr>
+			<tr dir-paginate="getBranchWiseReportObj in getBranchWiseReports | itemsPerPage: {{ defined('PERPAGE') ? PERPAGE : 15 }} | orderBy:predicate:reverse">
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Report No" class="ng-binding">[[getBranchWiseReportObj.order_no]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{$division_id}} == 0" data-title="Division Name">[[getBranchWiseReportObj.division_name]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Prototype No" class="ng-binding">[[getBranchWiseReportObj.stb_prototype_no]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{!defined('IS_TESTER')}}" data-title="Customer Name" class="ng-binding">[[getBranchWiseReportObj.customer_name]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{!defined('IS_TESTER')}}" data-title="Customer city" class="ng-binding">[[getBranchWiseReportObj.customer_city]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{!defined('IS_TESTER')}}">[[getBranchWiseReportObj.billing_type]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Report Date" class="ng-binding">[[getBranchWiseReportObj.order_date]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{!defined('IS_DISPATCHER') && !defined('IS_TESTER')}}" data-title="Expected Due Date" class="ng-binding">[[getBranchWiseReportObj.expected_due_date]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{defined('IS_ADMIN') || defined('IS_TESTER')}}" data-title="Department Due Date" class="ng-binding">[[getBranchWiseReportObj.dept_due_date]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="NABL No" class="ng-binding">[[getBranchWiseReportObj.nabl_no ? getBranchWiseReportObj.nabl_no : '']]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Report Date" class="ng-binding">[[getBranchWiseReportObj.report_date ? getBranchWiseReportObj.report_date : '']]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Sample Description" class="ng-binding">[[getBranchWiseReportObj.sample_description]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="sample_priority_name" class="ng-binding">[[getBranchWiseReportObj.sample_priority_name ? getBranchWiseReportObj.sample_priority_name : '']]</td> 
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Remarks" class="ng-binding" ng-if="{{!defined('IS_DISPATCHER')}}">
+				<span id="samplelimitedText-[[getBranchWiseReportObj.order_no]]">
+				    [[ getBranchWiseReportObj.remarks ? getBranchWiseReportObj.remarks : '-' | limitTo : {{ defined('TEXTLIMIT') ? TEXTLIMIT : 150 }} ]]
+				    <a href="javascript:;" ng-click="toggleDescription('sample',getBranchWiseReportObj.order_no)" ng-show="getBranchWiseReportObj.remarks.length > 150" class="readMore">read more...</a>
+				</span>
+				<span id="samplefullText-[[getBranchWiseReportObj.order_no]]" style="display:none;" >
+				    [[getBranchWiseReportObj.remarks ? getBranchWiseReportObj.remarks : '-']]
+				    <a href="javascript:;" ng-click="toggleDescription('sample',getBranchWiseReportObj.order_no)" class="readMore">read less...</a>
+				</span>
+			    </td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{(defined('IS_ADMIN') && IS_ADMIN) || (defined('IS_TESTER') && IS_TESTER)}}">
+				<a ng-if="getBranchWiseReportObj.olsd_cstp_file_link" href="[[getBranchWiseReportObj.olsd_cstp_file_link]]" title="Connected STP Detail" target="_blank" ng-bind="getBranchWiseReportObj.olsd_cstp_no"></a>
+			    </td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="order Last Activity" class="ng-binding">[[getBranchWiseReportObj.order_status_time]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="order status name" class="ng-binding">
+				<span ng-if="getBranchWiseReportObj.order_status == '3' || getBranchWiseReportObj.order_status == '4'" style="color:[[getBranchWiseReportObj.color_code]];"><a href="javascript:;" title="View Incharges" ng-click="funViewAllocatedSectionIncharges(getBranchWiseReportObj.order_id,getBranchWiseReportObj.order_no);">[[getBranchWiseReportObj.order_status_name]]</a></span>
+				<span ng-if="getBranchWiseReportObj.order_status != '3' && getBranchWiseReportObj.order_status != '4'" style="color:[[getBranchWiseReportObj.color_code]];">[[getBranchWiseReportObj.order_status_name]]</span>
+			    </td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}" data-title="Dispatched Date" class="ng-binding">
+				<span ng-if="!getBranchWiseReportObj.dispatch_date">-</i></span>
+				<span ng-if="getBranchWiseReportObj.dispatch_date">[[getBranchWiseReportObj.dispatch_date]]</span>
+			    </td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" ng-if="{{defined('IS_DISPATCHER') && IS_DISPATCHER}}" data-title="Dispatch By" class="ng-binding">
+				<span ng-if="!getBranchWiseReportObj.dispatch_by">-</i></span>
+				<span ng-if="getBranchWiseReportObj.dispatch_by">[[getBranchWiseReportObj.dispatch_by]]</span>
+			    </td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" data-title="Created By" class="ng-binding">[[getBranchWiseReportObj.createdByName]]</td>
+			    <td style="background:[[getBranchWiseReportObj.sample_priority_color_code]]" class="width10">
+				<!--list Action-->
+				@include('sales.reports.listAction')
+				<!--/list Action-->
+			    </td>                
+			</tr>                        
+			<tr ng-if="!getBranchWiseReports.length"><td colspan="14">No report found.</td></tr>
+		    </tbody>
+		    <tfoot>
+			<tr>
+			    <td colspan="14">
+				<div class="box-footer clearfix">
+				    <dir-pagination-controls></dir-pagination-controls>
+				</div>
+			    </td>
+			</tr>
+		    </tfoot>
+		</table>
+	    </div>
+	    <!--table data-->
+	</div>
+	<!--listing record-->
+    </form>
+    <!--/form-->
+    
+    <!--dispatch Order Details Popup Window-->
+    @include('sales.reports.dispatchOrderWithListPopupWindow')
+    <!--/dispatch Order Popup Window-->
+    
+    <!--Section Incharge Order Details Popup Window-->
+    @include('sales.reports.sectionInchargeOrderDetailPopupWindow')
+    <!--Section Incharge Order Details Popup Window-->
+    
+    <!--Abbreviation-->
+    <div class="row mT30" ng-init="funGetSamplePriorityList();" ng-if="samplePriorityList && getBranchWiseReports.length">
+	<table border="1" class="col-sm-3 table-striped table-condensed cf text-center">
+	    <tbody>
+		<tr>
+		   <td class="font13"><strong>Abbreviation</strong></td>
+		   <td class="font11" ng-repeat="samplePriorityObj in samplePriorityList" style="background:[[samplePriorityObj.sample_priority_color_code]]">[[samplePriorityObj.sample_priority_name]]</td> 
+		</tr>
+	    </tbody>
+	</table>
+    </div>
+    <!--/Abbreviation-->
+    
+</div>

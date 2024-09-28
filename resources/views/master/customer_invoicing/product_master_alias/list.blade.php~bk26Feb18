@@ -1,0 +1,77 @@
+<div class="row" ng-hide="listCustomerProductFormBladeDiv">
+    
+    <!--search-->
+    <div class="row header">        
+        <div role="new" class="navbar-form navbar-left">            
+            <div><strong ng-click="funGetCustomerProductsList()" id="form_title">Products Alias Listing<span ng-if="customerProductsList.length">([[customerProductsList.length]])</span></strong></div>
+        </div>            
+        <div role="new" class="navbar-form navbar-right">
+            <div class="nav-custom">
+                <input type="text" placeholder="Search" ng-model="filterCustomerProduct" class="form-control ng-pristine ng-untouched ng-valid">
+                <span ng-if="{{defined('ADD') && ADD}}">
+                    <button type="button" ng-click="navigateCustomerProductForms()" class="btn btn-primary">Add New</button>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!--/search-->    
+    <div class="row row-border">
+        <div class="col-sm-12 headingGray">
+                <div class="col-sm-3">
+                    <label> Product Name </label><a href="javascript:;" class="generate" ng-click="funGetProductListing();">Refresh</a>
+                </div>
+                <div class="col-sm-9">
+                    <div class="col-sm-6">
+                        <label>Product Alias Name</label>
+                    </div>
+                    <div class="col-sm-5">
+                        <label> Created By</label>
+                    </div>
+                    <!--<div class="col-sm-2">
+                        <label> Created On</label>
+                    </div>
+                    <div class="col-sm-2">
+                        <label> Updated On</label>
+                    </div>-->
+                    <div class="col-sm-1">
+                        <label>Action</label>
+                    </div>
+                </div>
+        </div>
+        <div class="col-sm-12">
+            <div class="col-sm-3 custom-rt-scroll">
+                <div ng-repeat="getProductListObj in getProductList" style="padding: 0;" class="col-sm-12 gray-listing" title="[[getProductListObj.product_name]]">
+                    <div  ng-if="productId != getProductListObj.product_id" class="statename col-sm-10 calcWidth" ng-click="funGetProductWiseAliasNameList(getProductListObj.product_id)">
+                         [[getProductListObj.product_name | capitalize]] 
+                    </div>
+                    <div  ng-if="productId == getProductListObj.product_id" class="col-sm-11 calcWidth active-gray-listing" ng-click="funGetProductWiseAliasNameList(getProductListObj.product_id)">
+                         [[getProductListObj.product_name | capitalize]] 
+                    </div>
+                    <div class="col-sm-1">
+                        <span ng-if="{{defined('EDIT') && EDIT}}">
+                            <button style="margin-left: -14px;"  ng-click="funEditAllCustomerProductMaster(getProductListObj.c_product_id,getProductListObj.product_id)" title="Edit Customer Product" class="btn btn-primary btn-sm"><i aria-hidden="true" class="fa fa-pencil-square-o"></i></button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-9 overflow-scroll">
+                <div class="col-sm-12" dir-paginate="customerProductObj in customerProductsList | filter:filterCustomerProduct | itemsPerPage: {{ defined('PERPAGE') ? PERPAGE : 15 }} | orderBy:predicate:reverse">
+                    <div class="col-sm-5 productname gray-listing" ng-click="funEditCustomerProductMaster(customerProductObj.c_product_id)">  
+                        [[customerProductObj.c_product_name]]
+                    </div>
+                    <div class="col-sm-5 productname gray-listing">[[customerProductObj.createdByName]]
+                    </div>
+                    <!--<div class="col-sm-2 productname gray-listing">[[customerProductObj.created_at]]</div>
+                    <div class="col-sm-2 productname gray-listing">[[customerProductObj.updated_at]]</div>-->
+                    <div class="col-sm-2 gray-listing">
+                        <button ng-click="funConfirmDeleteMessage(customerProductObj.c_product_id,'0','listDelete')" title="Delete Customer Product" class="btn btn-danger btn-sm"> <i class="fa fa-trash-o" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div ng-if="!customerProductsList.length" class="col-sm-12">
+             No Record Found!
+        </div>
+    </div>
+</div>

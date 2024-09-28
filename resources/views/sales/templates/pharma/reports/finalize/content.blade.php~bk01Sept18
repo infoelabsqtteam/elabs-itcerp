@@ -1,0 +1,377 @@
+<form name="orderReportForm" novalidate>
+	<!-- container start here -->
+	<div class="container pdng-20 botm-table" style="padding:10px;border: 1px solid;">
+		<!-- non editable part A container start here -->
+		<div ng-if="{{defined('IS_ADMIN') && IS_ADMIN || defined('IS_FINALIZER') && IS_FINALIZER || defined('IS_APPROVAL') && IS_APPROVAL}}" class="col-md-12">
+			<span ng-if="viewOrderReport.status == 5">
+				<span ng-if="{{defined('IS_REVIEWER') && IS_REVIEWER || defined('IS_ADMIN') && IS_ADMIN}}">
+					<a ng-click="toggelEditReportPartAForm()" class="cursor-pointer right-nav">Edit</a>
+				</span>
+			</span>
+			<table class="table table-bordered" style="margin:0;">
+				  <tbody>
+					<tr>
+						<td colspan="2">
+							<span class="bold samplename">Sample Name</span>
+							<span class="bold">:</span>
+							<span ng-if="viewOrderReport.sample_description" class="">[[viewOrderReport.sample_description]]</span>
+							<span ng-if="!viewOrderReport.sample_description"></span>
+						</td>
+						<!--<td>
+							<span class="bold font_lable">Report No</span><span class="bold">:</span>
+							<span ng-if="viewOrderReport.report_no">[[viewOrderReport.report_no]]</span>
+							<span ng-if="viewOrderReport.is_amended_no">- [[viewOrderReport.is_amended_no]]</span>
+							<span ng-if="!viewOrderReport.report_no && !viewOrderReport.is_amended_no"></span>
+						</td>-->
+					</tr>
+					<tr>
+						<td>
+							<span class="bold font_lable">Supplied By</span><span class="bold">:</span>
+							<span ng-if="viewOrderReport.supplied_by">[[viewOrderReport.supplied_by]]</span>
+							<span ng-if="!viewOrderReport.supplied_by"></span>
+						</td>
+						<td>
+							<span class="bold font_lable">Booking Code</span><span class="bold">:</span>
+							<span class="text-value" ng-if="viewOrderReport.order_no">[[viewOrderReport.order_no]]</span>
+							<span class="text-value" ng-if="!viewOrderReport.order_no"></span>
+							<span ng-if="viewOrderReport.is_amended_no">-[[viewOrderReport.is_amended_no]]</span>
+						</td>
+					</tr>
+					<tr>
+						<td class="width65">
+							<span class="bold font_lable">Manufactured By</span><span class="bold">:</span>
+							<span ng-if="viewOrderReport.manufactured_by">[[viewOrderReport.manufactured_by]]</span>
+							<span ng-if="!viewOrderReport.manufactured_by"></span>
+						</td>
+						<td class="width50">
+						<span ng-if="viewOrderReport.nabl_no">
+							<span class="bold font_lable">NABL Code</span><span class="bold">:</span>
+							<span ng-if="viewOrderReport.nabl_no">[[viewOrderReport.nabl_no]]</span>
+							</span>
+						</td>
+					</tr>
+					<tr>
+					 <td class="width50">
+								<span class="bold font_lable">Party Ref. Date</span><span class="bold">:</span>
+								<span ng-if="viewOrderReport.letter_no">[[viewOrderReport.letter_no]]</span>
+								<span ng-if="!viewOrderReport.letter_no"></span>
+					 </td>
+					 <td class="bodr_top bodr_bottom width65">
+								<span class="bold font_lable">Booking Date</span><span class="bold">:</span>
+								<span ng-if="viewOrderReport.order_date">[[viewOrderReport.order_date]]</span>
+								<span ng-if="!viewOrderReport.order_date"></span>
+					 </td>
+					</tr>
+					<tr>
+						<td  colspan="2" style="padding:0!important">
+							<table class="table table-bordered bodr_top bodr_bottom" style="background:transparent;margin:0">
+								<tr>
+									<td colspan="2" class=" bodr_top bodr_bottom width65" width="50%">
+										<span class="bold samplename">Submitted By</span><span class="bold">:</span>
+										<span ng-if="viewOrderReport.customer_name">[[viewOrderReport.customer_name]] - [[viewOrderReport.city_name]] ( [[viewOrderReport.state_name]] ) </span>
+										<span ng-if="!viewOrderReport.customer_name"></span>
+									</td>
+									
+								</tr>
+							</table>
+						</td>
+					</tr>
+
+					<tr>
+						<td  colspan="2" style="padding:0!important">
+							<table class="table table-bordered bodr_top bodr_bottom" style="background:transparent;margin:0">
+								<tr>
+									<td class=" bodr_top width25"><span class="bold font_lable">Mfg. Lic. No.</span><span class="bold">:</span>
+										    <span ng-if="viewOrderReport.mfg_lic_no">[[viewOrderReport.mfg_lic_no]]</span>
+										    <span ng-if="!viewOrderReport.mfg_lic_no"></span>
+									</td>
+									<td class=" bodr_top width25"><span class="bold font_lable">Batch No</span><span class="bold">:</span>
+										    <span ng-if="viewOrderReport.batch_no">[[viewOrderReport.batch_no]]</span>
+										    <span ng-if="!viewOrderReport.batch_no"></span>
+									</td>
+									<td class=" bodr_top width25"><span class="bold font_lable">Batch Size</span><span class="bold">:</span>
+										    <span ng-if="viewOrderReport.batch_size">[[viewOrderReport.batch_size]]</span>
+										    <span ng-if="!viewOrderReport.batch_size"></span>
+									</td>
+								</tr>
+								<tr>
+									<td class="bodr_bottom"><span class="bold font_lable">D/M</span><span class="bold">:</span>
+										    <span ng-if="!viewOrderReport.mfg_date"></span>
+										    <span ng-if="viewOrderReport.mfg_date">[[viewOrderReport.mfg_date]]</span>
+									    </td>
+									<td class="bodr_bottom"><span class="bold font_lable">D/E</span><span class="bold">:</span>
+										    <span ng-if="!viewOrderReport.expiry_date"></span>
+										    <span ng-if="viewOrderReport.expiry_date">[[viewOrderReport.expiry_date]]</span>
+									    </td>
+									<td class="bodr_bottom"><span class="bold font_lable">Sample Qty</span><span class="bold">:</span>
+										    <span ng-if="viewOrderReport.sample_qty">[[viewOrderReport.sample_qty]]</span>
+										    <span ng-if="!viewOrderReport.sample_qty"></span>
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+
+			</table>
+		</div>
+		<!--- /non editable part A container start here -->
+		<div class="col-md-12">
+			<span class="pull-right bold">
+				<span class="bodr_bottom">Date of completion of analysis</span>
+				<span> :</span>
+				<!--<span ng-if="viewOrderReport.report_date">[[viewOrderReport.report_date]]</span>
+				<span ng-if="!viewOrderReport.report_date"></span>-->
+				<span ng-if="viewOrderReport.orderAmendStatus && viewOrderReport.is_amended_no">[[orderTrackRecord.reviewing.report_view_date ? orderTrackRecord.reviewing.report_view_date : orderTrackRecord.finalizing.report_view_date]]</span>
+				<span ng-if="viewOrderReport.report_date && !viewOrderReport.is_amended_no">[[viewOrderReport.report_date]]</span>
+			</span>
+		</div>
+		<!-- part C div start here -->
+		<div class="container-fluid pdng-20 botm-table" id="foorPartC">
+
+			<div ng-if="viewOrderReport.stability_note && viewOrderReport.product_category_id == '2'" class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0;">
+					<div class="col-sm-11 col-xs-11">
+						<h4 class="text-center f_weight">[[viewOrderReport.stability_note]]</h4>
+					</div>
+				</div>
+			<div ng-repeat="categoryParameters in orderParametersList">
+				<div ng-if="viewOrderReport.header_note && viewOrderReport.product_category_id == '2' && categoryParameters.productCategoryName == viewOrderReport.assayParametersWithoutSpace" class="col-md-12 col-xs-12 botm-row text-center dis_flex " style="padding:0;">
+				<div class="col-sm-11 col-xs-11">
+					<h4 class="text-center f_weight">[[viewOrderReport.header_note]]</h4>
+				</div>
+				</div>
+				<div ng-if="!viewOrderReport.stability_note && viewOrderReport.product_category_id == '2' && categoryParameters.productCategoryName == assayParametersWithoutSpace" class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding: 14px;">
+					<div class="col-sm-11 col-xs-11">
+						<h4 class="text-center"></h4>
+					</div>
+				</div>
+				<div ng-if = "categoryParameters.categoryName == viewOrderReport.testParametersWithSpace" class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+					<div class="col-md-4 col-xs-4 bord"><b>[[categoryParameters.categoryName]]</b></div>
+					<div class="col-md-4 col-xs-4 bord bold">RESULT</div>
+					<div class="col-md-4 col-xs-4 bord bold">LIMIT</div>
+				</div>
+				<div ng-if = "categoryParameters.categoryName != viewOrderReport.testParametersWithSpace" class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+					<div class="col-md-4 col-xs-4 bord"><b>[[categoryParameters.categoryName]]</b></div>
+					<div class="col-md-2 col-xs-2 bord bold">RESULT</div>
+					<div class="col-md-2 col-xs-2 bord bold">CLAIM</div>
+					<div class="col-md-2 col-xs-2 bord bold">LIMIT</div>
+					<div class="col-md-2 col-xs-2 bord bold">METHOD</div>
+				</div>
+				<div ng-repeat="subCategoryParameters in categoryParameters.categoryParams track by $index">
+					<div ng-if = "categoryParameters.categoryName == viewOrderReport.testParametersWithSpace && subCategoryParameters.description.length">
+						<div class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+							<div class="col-md-4 col-xs-4 bord text-left">
+								<span ng-if="subCategoryParameters.test_parameter_name" ng-bind-html="subCategoryParameters.test_parameter_name"></span>
+								<span ng-if="!subCategoryParameters.test_parameter_name"><span>
+							</div>
+							<div class="col-md-8 col-xs-8 bord text-justify">
+								<span ng-if="subCategoryParameters.description">[[subCategoryParameters.description]]</span>
+								<span ng-if="!subCategoryParameters.description"><span>
+							</div>
+						</div>
+					</div>
+					<div ng-if = "categoryParameters.categoryName == viewOrderReport.testParametersWithSpace && !subCategoryParameters.description.length">
+						<div class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+							<div class="col-md-4 col-xs-4 bord text-left">
+								<span ng-if="subCategoryParameters.test_parameter_name" ng-bind-html="subCategoryParameters.test_parameter_name"></span>
+								<span ng-if="!subCategoryParameters.test_parameter_name"><span>
+							</div>
+							<div class="col-md-4 col-xs-4 bord">
+								<span class="resultValue" ng-if="subCategoryParameters.test_result">[[subCategoryParameters.test_result]]</span>
+								<span ng-if="!subCategoryParameters.test_result"><span>
+							</div>
+							<div class="col-md-4 col-xs-4 bord">
+								<span ng-if="subCategoryParameters.requirement_from_to">[[subCategoryParameters.requirement_from_to]]
+									&nbsp;<span ng-if="subCategoryParameters.claim_value_unit "> [[subCategoryParameters.claim_value_unit | capitalizeAll]]</span>
+								</span>
+							</div>
+						</div>
+					</div>
+					<div ng-if = "categoryParameters.categoryName != viewOrderReport.testParametersWithSpace">
+						<div class="col-md-12 col-xs-12 botm-row text-center dis_flex" style="padding:0">
+							<div class="col-md-4 col-xs-4 bord text-left">
+								<span ng-if="subCategoryParameters.test_parameter_name" ng-bind-html="subCategoryParameters.test_parameter_name"></span>
+								<span ng-if="!subCategoryParameters.test_parameter_name"><span>
+							</div>
+							<div class="col-md-2 col-xs-2 bord">
+								<span class="resultValue" ng-if="subCategoryParameters.test_result">[[subCategoryParameters.test_result]]</span>
+								<span ng-if="!subCategoryParameters.test_result"><span>
+							</div>
+							<div class="col-md-2 col-xs-2 bord">
+								<span ng-if="subCategoryParameters.claim_value">
+									<span ng-if="subCategoryParameters.claim_value">[[subCategoryParameters.claim_value]]</span>
+									<span ng-if="subCategoryParameters.claim_value_unit "> [[subCategoryParameters.claim_value_unit | capitalizeAll]]</span>
+								</span>
+
+							</div>
+							<div class="col-md-2 col-xs-2 bord">
+								<span ng-if="subCategoryParameters.requirement_from_to">[[subCategoryParameters.requirement_from_to]]
+									&nbsp;<span ng-if="subCategoryParameters.claim_value_unit "> [[subCategoryParameters.claim_value_unit | capitalizeAll]]</span>
+								</span>
+							</div>
+							<div class="col-md-2 col-xs-2 bord">
+								<span ng-if="subCategoryParameters.method_name">[[subCategoryParameters.method_name]]</span>
+								<span ng-if="!subCategoryParameters.method_name"><span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+	   </div>
+	   <!-- part C div start here -->
+
+	    <div ng-if="viewOrderReport.report_note_value" class="col-md-12 col-xs-12 mrgn_20 mT20 mB20">
+			<div class="col-sm-1 col-xs-1"><b>Note :</b></div>
+			<div class="col-sm-10 col-xs-10">
+				 <span ng-if="viewOrderReport.report_note_value">[[viewOrderReport.report_note_value]]</span>
+				 <span ng-if="!viewOrderReport.report_note_value"></span>
+			</div>
+		</div>
+
+	    <!-------------------------REPORT NOTE------------------------------->
+		<div ng-if="viewOrderReport.note_value" class="col-md-12 col-xs-12 mrgn_20 mT20 mB20">
+			<div class="col-sm-1 col-xs-1 upr-case">NOTE :</div>
+			<div class="col-sm-10 col-xs-10">
+				 <span ng-if="viewOrderReport.note_value">[[viewOrderReport.note_value]]</span>
+				 <span ng-if="!viewOrderReport.note_value"></span>
+			</div>
+		</div>
+		<!-------------------------/REPORT NOTE------------------------------->
+
+		<!-- part D div start here -->
+		<div class="col-md-12 col-xs-12 botm-row dis_flex" ng-if="viewOrderReport.remark_value">
+			<span class="pharamNote">
+				<span ng-if="viewOrderReport.remark_value">[[viewOrderReport.remark_value]]<span ng-if="viewOrderReport.test_standard_value"> [[viewOrderReport.test_standard_value]]</span></span>
+			</span>
+		</div>
+		<div class="col-md-12 col-xs-12 mT20" ng-if="viewOrderReport.remark_value && viewOrderReport.isBackDateBookingAllowed == 1">
+			<div class="col-sm-12 col-xs-12" ng-init="funGetReviewReportDateInit()">
+				<div class="col-sm-3 col-xs-3 upr-case">Select Date<em class="asteriskRed">*</em></div>
+				<div class="col-sm-9 col-xs-9">
+					<input type="text" id="report_date" ng-model="viewOrderReport.report_date" ng-value="viewOrderReport.report_date" name="report_date" class="form-control bgWhite" placeholder="Report Date">
+					<input type="hidden" id="back_report_date" ng-model="viewOrderReport.isBackDateBookingAllowed" ng-value="viewOrderReport.isBackDateBookingAllowed" name="back_report_date">
+				</div>
+			</div>
+		</div>
+		<!--Name and Sinature-->
+		<div class="col-md-12 col-xs-12 mT30">
+			<div class="col-sm-4 col-xs-4 text-left mrgn_20 ">
+				<h5>
+					<b>Report Date</b> :
+					<span ng-if="!viewOrderReport.report_date">  </span>
+					<span ng-if="viewOrderReport.report_date"> [[viewOrderReport.report_date]]</span>
+				</h5>
+			</div>
+			<div class="col-sm-4 col-xs-4 text-center mrgn_20">
+				<p ng-if="viewOrderReport.status >= 6" style="width:100%;"><img height="40px" width="100px" style="margin:-12px 0 0;" ng-alt="[[orderTrackRecord.reviewing.user_signature]]" ng-src="{{SITE_URL.SIGN_PATH}}[[orderTrackRecord.reviewing.user_signature]]"/></p>
+				<p ng-if="viewOrderReport.status >= 6" style="font-size:10px;width:100%;">[[orderTrackRecord.reviewing.username]]</p>
+				<!--<h5 ng-if="viewOrderReport.status >= 6">[[orderTrackRecord.reviewing.report_view_date]]</h5>-->
+				<h4 ng-if="viewOrderReport.status >= 6">Reviewer</h4>
+			</div>
+			<div class="col-sm-4 col-xs-4 text-right mrgn_20 ">
+				<span ng-if="{{defined('IS_ADMIN') && IS_ADMIN || defined('IS_APPROVAL') && IS_APPROVAL}}">
+					<span ng-if="viewOrderReport.status==7">
+						<span class="webStampView" ng-if ="viewOrderReport.is_display_stamp && viewOrderReport.is_display_stamp=='1' && viewOrderReport.stampType"><img ng-src="{{SITE_URL.'/public/images/quality/'.GREEN_STANDARD_QUALITY}}"/></span>
+						<span class="webStampView" ng-if ="viewOrderReport.is_display_stamp && viewOrderReport.is_display_stamp=='1' && !viewOrderReport.stampType"><img  ng-src="{{SITE_URL.'/public/images/quality/'.RED_STANDARD_QUALITY}}"/></span>
+						<span class="webStampView" ng-if ="viewOrderReport.is_display_stamp && viewOrderReport.is_display_stamp=='2' && !viewOrderReport.stampType"><img  ng-src="{{SITE_URL.'/public/images/quality/'.NOT_STANDARD_QUALITY}}"/></span>
+					</span>
+				</span>	
+				<p ng-if="viewOrderReport.status >= 7" style="width:100%;"><img height="" width="100px" style="margin:-12px 0px 0px; padding-left: 15px;" ng-alt="[[orderTrackRecord.finalizing.user_signature]]" ng-src="{{SITE_URL.SIGN_PATH}}[[orderTrackRecord.finalizing.user_signature]]"/></p>
+				<!--<h5 ng-if="viewOrderReport.status >= 7">[[orderTrackRecord.finalizing.report_view_date]]</h5>-->
+				<h4 ng-if="viewOrderReport.status >= 7">[[orderTrackRecord.finalizing.username]]</h4>
+				<h4 ng-if="viewOrderReport.status >= 7">[Person Incharge / DGM Pharma]</h4>
+			</div>
+		</div>
+		<!--Name and Sinature-->
+
+		<!--Save Button-->
+		<div class="col-md-12 col-xs-12 dis_flex test_foot" style="padding:0">
+
+			<div class="col-md-3 col-sm-3 col-xs-3">&nbsp;</div>
+			<div class="col-md-6 col-sm-6 col-xs-6 text-center mT10">
+
+				<div class="col-md-12 col-xs-12 hideContentOnPdf">
+					<div class="col-sm-12 col-xs-12 text-center mrgn_20">
+						<input type="hidden" name="order_id" ng-modal="viewOrderReport.order_id" ng-value="viewOrderReport.order_id">
+						<input type="hidden" name="order_status" ng-modal="viewOrderReport.status" ng-value="viewOrderReport.status">
+						<!----------btns according to current status of report---------------->
+
+						<!----Action for update Report status By FINALIZER---->
+						 <span ng-if="{{defined('IS_FINALIZER') && IS_FINALIZER}}">
+							<span ng-if="viewOrderReport.status==6">
+								<input type="submit" ng-click="funConfirmReportStatus(viewOrderReport.order_id,'ConfirmReportByQADepartment','Are you sure you want to confirm this record?')" value="Confirm" class="btn btn-primary">
+								<button type="submit" data-toggle="modal" ng-click="funOpenNeedModificationModal('ByQaDept')" class="btn btn-primary hideNeedModificationOnPdf">Need Modification</button>
+							</span>
+						 </span>
+						 <span ng-if="{{defined('IS_ADMIN') && IS_ADMIN}}">
+							<span ng-if="viewOrderReport.status==6">
+								<input type="submit" ng-click="funConfirmReportStatus(viewOrderReport.order_id,'ConfirmReportByQADepartment','Are you sure you want to confirm this record?')" value="Confirm" class="btn btn-primary">
+								<button type="submit" data-toggle="modal" ng-click="funOpenNeedModificationModal('ByQaDept')" class="btn btn-primary hideNeedModificationOnPdf">Need Modification</button>
+							</span>
+						 </span>
+						<!----Action for update Report status By FINALIZER---->
+
+						<!----Action for update Report status By QA APPROVAL---->
+						<span ng-if="{{defined('IS_APPROVAL') && IS_APPROVAL}}">
+							<span ng-if="viewOrderReport.status==7">
+								<input type="submit" ng-click="funOpenNeedModificationModal('generateReportCriteriaId')" value="Generate Report" class="btn btn-primary">
+								<button type="submit" data-toggle="modal" ng-click="funOpenNeedModificationModal('ByQaDept')" class="btn btn-primary hideNeedModificationOnPdf">Need Modification</button>
+							</span>
+							<!----Action for generate pdf Report By QA APPROVAL---->
+							<span ng-if="viewOrderReport.status > 7">
+								<input type="submit" ng-click="funOpenNeedModificationModal('generateReportCriteriaId')" value="Download Report" class="btn btn-primary">
+								<input type="hidden" name="report_file_name" id="report_file_name" ng-modal="viewOrderReport.report_file_name" ng-value="viewOrderReport.report_file_name">
+							</span>
+							<!-----/Action for generate pdf Report By QA APPROVAL----->
+						</span>
+						<span ng-if="{{defined('IS_ADMIN') && IS_ADMIN}}">
+							<span ng-if="viewOrderReport.status==7">
+								<input type="submit" ng-click="funOpenNeedModificationModal('generateReportCriteriaId')" value="Generate Report" class="btn btn-primary">
+								<button type="submit" data-toggle="modal" ng-click="funOpenNeedModificationModal('ByQaDept')" class="btn btn-primary hideNeedModificationOnPdf">Need Modification</button>
+							</span>
+							<!----Action for generate pdf Report By QA APPROVAL---->
+							<span ng-if="viewOrderReport.status > 7">
+								<input type="submit" ng-click="funOpenNeedModificationModal('generateReportCriteriaId')" value="Download Report" class="btn btn-primary">
+								<input type="hidden" name="report_file_name" id="report_file_name" ng-modal="viewOrderReport.report_file_name" ng-value="viewOrderReport.report_file_name">
+							</span>
+							<!-----/Action for generate pdf Report By QA APPROVAL----->
+						</span>
+						<!----Action for update Report status By APPROVAL---->
+
+						<!----------/btns according to current status of report---------------->
+						<input type="hidden" id="order_no" ng-modal="viewOrderReport.order_no" ng-value="viewOrderReport.order_no">
+						<button type="button" class="btn btn-primary hideContentOnPdf" ng-click="backButton()">Back</button>
+					</div>
+				</div>
+				<!--Save Button-->
+			</div>
+		</div>
+		<!--Save Button-->
+		<!-- part D div END here -->
+	</div>
+
+	<!--Need Modification-->
+	@include('sales.templates.pharma.reports.finalize.needModification')
+	<!--/Need Modification-->
+</form>
+
+<!--generate Report Criteria Popup-->
+@include('sales.reports.generateReportCriteriaPopup')
+<!--/generate Report Criteria Popup-->
+
+<style>
+.font_lable{width:30%;float: left;margin-left: 4px;}
+.table{font-size:14px!important;}
+.bold{font-weight:600;}
+.table td {
+    padding: 3px!important;
+	border-color:#000;
+}
+.bodr_top{border-top:0px!important;}
+.bodr_bottom{border-bottom:0px!important;}
+.left_txt{border: 1px solid;
+    padding: 3px;
+    margin-top: 5px;
+    font-size: 14px;
+    width: auto;
+    float: left;}
+</style>

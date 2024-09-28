@@ -1,0 +1,494 @@
+<div class="row order-section fontbd" style="margin-top:10px!important;">Sample Detail </div>
+<div class="order_detail">  
+    <div class="row mT10">				
+	
+	<!--Branch -->
+	<div ng-if="{{$division_id}} == 0" class="col-xs-3 form-group">
+	    <label for="stb_division_id">Branch<em class="asteriskRed">*</em></label>
+	    <select class="form-control"
+		name="stb_division_id"
+		id="stb_division_id"
+		ng-model="orderStabilitySample.stb_division_id.selectedOption"
+		ng-required="true"
+		ng-options="division.name for division in divisionsCodeList track by division.id">
+		<option value="">Select Branch</option>
+	    </select>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_division_id.$error" ng-if="erpCreateStabilityOrderCSForm.stb_division_id.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Branch is required</span>
+	    </span>
+	</div>
+	<div ng-if="{{$division_id}} > 0">
+	    <input type="hidden" id="stb_division_id" ng-model="orderStabilitySample.stb_division_id" name="stb_division_id" value="{{$division_id}}">
+	</div>
+	<!--/Branch -->
+    
+	<!-- Prototype date-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_prototype_date">Prototype Date<em class="asteriskRed">*</em></label>
+	    <div class="input-group">
+		<input
+		    readonly
+		    type="text"
+		    id="stb_prototype_date"
+		    ng-model="orderStabilitySample.stb_prototype_date"
+		    valid-date
+		    name="stb_prototype_date"
+		    class="form-control bgWhite stb_prototype_datepicker"
+		    placeholder="Order Date">
+		<div class="input-group-addon"><span class="glyphicon glyphicon-th"></span></div>
+	    </div>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_prototype_date.$error" ng-if="erpCreateStabilityOrderCSForm.stb_prototype_date.$dirty  || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Prototype date is required</span>
+	    </span>
+	</div>
+	<!-- /Prototype date-->
+    
+	<!--Reference No-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_reference_no">Letter Reference No.</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_reference_no"
+		ng-model="orderStabilitySample.stb_reference_no"
+		name="stb_reference_no"
+		placeholder="Letter Reference No.">
+	</div>
+	<!--/Reference No-->
+	
+	<!--Letter No-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_letter_no">Letter Reference Date</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_letter_no"
+		ng-model="orderStabilitySample.stb_letter_no"
+		name="stb_letter_no"
+		placeholder="Letter Reference Date">
+	</div>
+	<!--/Letter No-->
+	
+	<!--Sample Description-->                           
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_description_id">Sample Name<em class="asteriskRed">*</em></label>
+	    <a href="javascript:;" class="closeAlert mT5" ng-if="closeAutoSearchList" ng-click="funCloseAutoSearchList()"><i class="fa fa-close"></i></a>
+	    <input
+		class="form-control"
+		name="stb_sample_description_name" 			
+		ng-model="orderStabilitySample.stb_sample_description_name"
+		id="stb_sample_description_name"
+		ng-change="getAutoSearchSampleMatches(orderStabilitySample.stb_sample_description_name,stbSampleID);"
+		placeholder="Sample Name"
+		ng-required='true'
+		autocomplete="off">
+	    <input type="hidden" name="stb_product_id" ng-model="orderStabilitySample.stb_product_id" ng-value="orderStabilitySample.stb_product_id" id="stb_product_id">
+	    <input type="hidden" name="stb_sample_description_id" ng-model="orderStabilitySample.stb_sample_description_id" ng-value="orderStabilitySample.stb_sample_description_id" id="stb_sample_description_id">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_sample_description_name.$error" ng-if='erpCreateStabilityOrderCSForm.stb_sample_description_name.$dirty || erpCreateStabilityOrderCSForm.$submitted' role="alert">
+		<span ng-message="required" class="error">Sample Name is required</span>
+	    </span>
+	    <ul ng-if="showAutoSearchList" class="autoSearch">
+		<li ng-if="resultItems.length" ng-repeat="sampleObj in resultItems" ng-click="funSetSelectedSampleStabilityOrder(sampleObj.id,sampleObj.name,sampleObj.product_id,'add');funGetTestProductAccordingToSampleName(sampleObj.id)">[[sampleObj.name]]</li>
+		<li ng-if="!resultItems.length">No Record Found!</li>
+	    </ul>
+	</div>
+	<!--/Sample Description-->
+    </div>
+	
+    <div class="row">
+	
+	<!--Product Description-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_product_description">Product Description</label>
+	    <textarea
+		rows="1"
+		class="form-control description"
+		id="stb_product_description"
+		ng-model="orderStabilitySample.stb_product_description"
+		name="stb_product_description"
+		placeholder="Product Description">
+	    </textarea>
+	</div>
+	<!--/Product Description-->
+	
+	<!--Sample Pack Code-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_pack_code">Sample Pack Code</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_sample_pack_code"
+		ng-model="orderStabilitySample.stb_sample_pack_code"
+		name="stb_sample_pack_code"
+		placeholder="Sample Pack Code">
+	</div>
+	<!--/Sample Pack Code-->
+	
+	<!--Sample Pack-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_pack">Sample Pack</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_sample_pack"
+		ng-model="orderStabilitySample.stb_sample_pack"
+		name="stb_sample_pack"
+		placeholder="Sample Pack">
+	</div>
+	<!--/Sample Pack-->
+	
+	<!--Storage Condition Sample Pack-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_storage_cond_sample_pack">Storage Condition Sample Pack</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_storage_cond_sample_pack"
+		ng-model="orderStabilitySample.stb_storage_cond_sample_pack"
+		name="stb_storage_cond_sample_pack"
+		placeholder="Storage Condition Sample Pack">
+	</div>
+	<!--/Storage Condition Sample Pack-->
+    
+    </div>
+	
+    <div class="row">
+    
+	<!--Orientation-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_orientation">Orientation</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_orientation"
+		ng-model="orderStabilitySample.stb_orientation"
+		name="stb_orientation"
+		placeholder="Orientation">
+	</div>
+	<!--/Orientation-->
+    
+    </div>
+
+    <div class="row">
+	
+	<!--batch number-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_batch_no">Batch No.<em class="asteriskRed">*</em></label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_batch_no"
+		ng-model="orderStabilitySample.stb_batch_no"
+		ng-required="true"
+		name="stb_batch_no"
+		placeholder="batch no">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_batch_no.$error" ng-if='erpCreateStabilityOrderCSForm.stb_batch_no.$dirty || erpCreateStabilityOrderCSForm.$submitted' role="alert">
+		<span ng-message="required" class="error">Batch No. is required</span>
+	    </span>
+	</div>
+	<!-- /batch number-->
+	
+	<!--Sample Qty-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_qty">Sample Qty.<em class="asteriskRed">*</em></label>
+	    <input
+		type="text"
+		valid-number
+		class="form-control"
+		id="stb_sample_qty"
+		ng-required="true"
+		ng-model="orderStabilitySample.stb_sample_qty"
+		name="stb_sample_qty"
+		placeholder="sample qty">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_sample_qty.$error" ng-if='erpCreateStabilityOrderCSForm.stb_sample_qty.$dirty || erpCreateStabilityOrderCSForm.$submitted' role="alert">
+		<span ng-message="required" class="error">Sample Qty. is required</span>
+	    </span>
+	</div>
+	<!--/Sample Qty-->
+	
+	<!--Sample Qty Unit-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_qty_unit">Sample Qty. Unit<em class="asteriskRed">*</em></label>
+	    <input
+		type="text"
+		valid-alphabet
+		class="form-control"
+		id="stb_sample_qty_unit"
+		ng-required="true"
+		ng-model="orderStabilitySample.stb_sample_qty_unit"
+		name="stb_sample_qty_unit"
+		placeholder="sample qty unit">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_sample_qty_unit.$error" ng-if='erpCreateStabilityOrderCSForm.stb_sample_qty_unit.$dirty || erpCreateStabilityOrderCSForm.$submitted' role="alert">
+		<span ng-message="required" class="error">Sample Qty. Unit is required</span>
+	    </span>
+	</div>
+	<!--/Sample Qty Unit-->
+	
+	<!-- Date of manufacturing.-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_mfg_date">Date of Mfg.</label>
+	    <input
+		type="text"
+		id="stb_mfg_date"
+		ng-model="orderStabilitySample.stb_mfg_date"
+		name="stb_mfg_date"
+		class="form-control bgWhite"
+		placeholder="Date of Mfg.">
+	</div>
+	<!-- Date of manufacturing.-->
+	
+	<!--Date of Expiry-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_expiry_date">Date of Expiry</label>
+	    <input
+		type="text"
+		id="stb_expiry_date"
+		name="stb_expiry_date"
+		ng-model="orderStabilitySample.stb_expiry_date"
+		class="form-control bgWhite"
+		placeholder="Date of Expiry">
+	</div>
+	<!--/Date of Expiry-->
+	
+    </div>
+    
+    <div class="row">
+	
+	<!--Batch Size-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_batch_size">Batch Size</label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_batch_size"
+		ng-model="orderStabilitySample.stb_batch_size"
+		name="stb_batch_size"
+		placeholder="batch size">
+	</div>
+	<!--/Batch Size-->
+	
+	<!--Manufactured By-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_manufactured_by">Supplied By<input type="checkbox" ng-model="orderStabilitySample.suppliedBy" ng-click="funCheckAddCustomer(orderStabilitySample.suppliedBy,orderStabilitySample.stb_customer_name,'stb_supplied_by')" ng-checked="orderStabilitySampleDetail.customer_name.length"></label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_supplied_by"
+		ng-model="orderStabilitySample.stb_supplied_by"
+		name="stb_supplied_by"
+		placeholder="supplied by">
+	</div>
+	<!--/Manufactured By-->
+	
+	<!--Manufactured By-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_manufactured_by">Manufactured By<input type="checkbox" ng-model="orderStabilitySample.manufacturedBy" ng-click="funCheckAddCustomer(orderStabilitySample.manufacturedBy,orderStabilitySample.stb_customer_name,'stb_manufactured_by')" ng-checked="orderStabilitySampleDetail.customer_name.length"></label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_manufactured_by"
+		ng-model="orderStabilitySample.stb_manufactured_by"
+		name="stb_manufactured_by"
+		placeholder="manufactured by">
+	</div>
+	<!--/Manufactured By-->
+	
+	<!--Brand-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_brand_type">Brand<em class="asteriskRed">*</em></label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_brand_type"
+		ng-model="orderStabilitySample.stb_brand_type"
+		name="stb_brand_type"
+		ng-required="true"
+		placeholder="Brand Name">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_brand_type.$error" ng-if='erpCreateStabilityOrderCSForm.stb_brand_type.$dirty || erpCreateStabilityOrderCSForm.$submitted' role="alert">
+		<span ng-message="required" class="error">Brand Name is required</span>
+	    </span>
+	</div>
+	<!--/Brand--> 
+    </div>
+    
+    <div class="row">
+    
+	<!--Sample Priority-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sample_priority_id">Sample Priority<em class="asteriskRed">*</em></label>
+	    <select 
+		class="form-control"
+		name="stb_sample_priority_id"
+		ng-model="orderStabilitySample.stb_sample_priority_id"
+		id="stb_sample_priority_id"
+		ng-required="true"
+		ng-change="funSetSurchargeValue(orderStabilitySample.stb_sample_priority_id.sample_priority_id)"
+		ng-options="samplePriority.sample_priority_name for samplePriority in samplePriorityList track by samplePriority.sample_priority_id">
+		<option value="">Select Sample Priority</option>
+	    </select>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_sample_priority_id.$error" ng-if="erpCreateStabilityOrderCSForm.stb_sample_priority_id.$untouched ||erpCreateStabilityOrderCSForm.stb_sample_priority_id.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Sample Priority is required</span>
+	    </span>
+	</div>
+	<!--/Sample Priority-->
+	
+	<!--Surcharge Value-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_surcharge_value">Surcharge (Rs)<em ng-if="isSetSurchargeValueFlag" class="asteriskRed">*</em></label>
+	    <input type="text" ng-if="isSetSurchargeValueFlag" class="form-control" id="stb_surcharge_value" ng-model="orderStabilitySample.stb_surcharge_value" ng-required="true" name="stb_surcharge_value" placeholder="Surcharge Value (Rs)">
+	    <input type="text" ng-if="!isSetSurchargeValueFlag" readonly class="form-control" id="stb_surcharge_value" ng-model="orderStabilitySample.stb_surcharge_value" name="stb_surcharge_value" placeholder="Surcharge Value (Rs)">
+	    <div ng-if="isSetSurchargeValueFlag">
+		<span ng-messages="erpCreateStabilityOrderCSForm.stb_surcharge_value.$error" ng-if="erpCreateStabilityOrderCSForm.stb_surcharge_value.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		    <span ng-message="required" class="error">Surcharge is required</span>
+		</span>
+	    </div>
+	</div>
+	<!--/Surcharge Value-->
+	
+	<!--Remarks-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_remarks">Remarks</label>
+	    <textarea
+		rows="1"
+		class="form-control description"
+		id="stb_remarks"
+		ng-model="orderStabilitySample.stb_remarks"
+		name="stb_remarks"
+		placeholder="Remarks">
+	    </textarea>
+	</div>
+	<!--/Remarks-->
+	
+	<!--PI reference-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_pi_reference">PI Reference(if any)</label>
+	    <input type="text" class="form-control" id="stb_pi_reference" ng-model="orderStabilitySample.stb_pi_reference" name="stb_pi_reference" placeholder="pi reference">
+	</div>
+	<!--/PI reference-->    
+	
+    </div>
+
+    <div class="row">
+    
+	<!--Sealed/Unsealed -->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_is_sealed">Sealed/Unsealed<em class="asteriskRed">*</em></label>
+	    <select class="form-control"
+		name="stb_is_sealed"
+		id="stb_is_sealed"
+		ng-model="orderStabilitySample.stb_is_sealed"
+		ng-options="sealedUnsealed.name for sealedUnsealed in sealedUnsealedList track by sealedUnsealed.id"
+		ng-required="true">
+		<option value="">Select Sealed/Unsealed</option>
+	    </select>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_is_sealed.$error" ng-if="erpCreateStabilityOrderCSForm.stb_is_sealed.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Sealed/Unsealed is required</span>
+	    </span>
+	</div>
+	<!--/Sealed/Unsealed -->
+	
+	<!--Signed/Unsigned -->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_is_signed">Signed/Unsigned<em class="asteriskRed">*</em></label>
+	    <select class="form-control"
+		name="stb_is_signed"
+		id="stb_is_signed"
+		ng-model="orderStabilitySample.stb_is_signed"
+		ng-options="signedUnsigned.name for signedUnsigned in signedUnsignedList track by signedUnsigned.id"
+		ng-required="true">
+		<option value="">Select Signed/Unsigned</option>
+	    </select>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_is_signed.$error" ng-if="erpCreateStabilityOrderCSForm.stb_is_signed.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Signed/Unsigned is required</span>
+	    </span>
+	</div>
+	<!--/Signed/Unsigned -->
+	
+	<!--Packing Mode-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_packing_mode">Packing Mode<em class="asteriskRed">*</em></label>
+	    <input
+		type="text"
+		class="form-control"
+		id="stb_packing_mode"
+		ng-model="orderStabilitySample.stb_packing_mode"
+		ng-required="true"
+		name="stb_packing_mode"
+		placeholder="Packing Mode">
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_packing_mode.$error" ng-if="erpCreateStabilityOrderCSForm.stb_packing_mode.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Packing Mode is required</span>
+	    </span>
+	</div>
+	<!--/Packing Mode-->
+    
+	<!-- Sampling date.-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_sampling_date">Sampling Date</label>
+	    <div class="input-group date">
+		<input
+		    type="text" 
+		    class="form-control bgWhite stb_sampling_datepicker"
+		    id="stb_sampling_date" 
+		    ng-model="orderStabilitySample.stb_sampling_date"
+		    name="stb_sampling_date"
+		    placeholder="Sampling Date"/>
+	      <div class="input-group-addon"><span class="glyphicon-calendar glyphicon"></span></div>
+	    </div>
+	</div>
+	<!-- /Sampling date.-->
+	     
+    </div>
+    
+    <div class="row">
+    
+	<!--Submission Type -->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_submission_type">Submission Type <em class="asteriskRed">*</em></label> 
+	    <select
+		class="form-control"
+		name="stb_submission_type"
+		ng-model="orderStabilitySample.stb_submission_type"
+		id="stb_submission_type" 
+		ng-options="submissionType.name for submissionType in submissionTypeList track by submissionType.id"
+		ng-change="funSubmissionTypeValue(orderStabilitySample.stb_submission_type.id)"
+		ng-required="true">
+		<option value="">Select Submission Type</option> 
+	    </select>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_submission_type.$error" ng-if="erpCreateStabilityOrderCSForm.stb_submission_type.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Submission type is required</span>
+	    </span>		
+	</div>
+	<!--/Submission Type -->
+	
+	<!--Advance Value-->
+	<div class="col-xs-3 form-group" ng-if="advanceDetailsDisplay">
+	    <label for="stb_advance_details">Advance Details<em class="asteriskRed">*</em></label>
+	    <textarea rows="1" ng-if="advanceDetailsDisplay" ng-required="true" class="form-control" id="stb_advance_details" ng-model="orderStabilitySample.stb_advance_details" name="stb_advance_details" placeholder="Advance Details"></textarea>
+	    <span ng-messages="erpCreateStabilityOrderCSForm.stb_advance_details.$error" ng-if="erpCreateStabilityOrderCSForm.stb_advance_details.$dirty || erpCreateStabilityOrderCSForm.$submitted" role="alert">
+		<span ng-message="required" class="error">Advance Details is required</span>
+	    </span>	
+	</div>
+	<!--/Advance Value-->
+    
+	<!--Quotation No.-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_quotation_no">Quotation No.</label>
+	    <input type="text" class="form-control" id="stb_quotation_no" ng-model="orderStabilitySample.stb_quotation_no" name="stb_quotation_no" placeholder="Quotation No.">
+	</div>
+	<!--/Quotation No.-->
+    	
+	<!--Actual Submission Type-->
+	<div class="col-xs-3 form-group">
+	    <label for="stb_actual_submission_type">Actual Submission Type</label>
+	    <input type="text" class="form-control" id="stb_actual_submission_type" ng-model="orderStabilitySample.stb_actual_submission_type" name="stb_actual_submission_type" placeholder="Actual Submission Type">
+	</div>
+	<!--/Actual Submission Type-->
+	
+	<!--convenience_charge-->
+    	<div class="col-xs-3 form-group">
+    	    <label for="stb_extra_amount">Extra Amount</label>
+    	    <input type="text" class="form-control" id="stb_extra_amount" ng-model="orderStabilitySample.stb_extra_amount" name="stb_extra_amount" placeholder="Extra Amount">
+    	</div>
+	<!--/convenience_charge-->
+    </div>
+</div>

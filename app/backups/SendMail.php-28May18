@@ -1,0 +1,260 @@
+<?php
+
+namespace App;
+
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Model;
+use DB;
+use App\Models;
+use App\Order;
+use App\Customer;
+use App\InvoiceHdr;
+
+class SendMail extends Model{
+
+	public function __construct(){
+		global $models,$order,$invoice;
+		$models 	= new Models();
+		$order          = new Order();
+		$invoice        = new invoiceHdr();
+	}
+	
+	/****************************************
+	*send mail to customer
+	*****************************************/
+	function sendMail($requiredData){
+		
+		global $models,$order,$invoice;
+		
+		/*****************************************************
+		*if mailTemplateType = 1 then mail for sample booked.
+		*if mailTemplateType = 2 then mail for order placed.
+		*if mailTemplateType = 3 then mail for Report Generation.
+		*if mailTemplateType = 4 then mail for invoice Generation.
+		******************************************************/
+		if(defined('SEND_MAIL_NOTIFICATION') && SEND_MAIL_NOTIFICATION  == '1'){
+			if($requiredData['mailTemplateType']== '1'){
+			    return $this->sendMailToCustomerOnSampleBooking($requiredData);    
+			}
+			if($requiredData['mailTemplateType']== '2'){
+			    return $this->sendMailToCustomerOnOrderPlace($requiredData);    
+			}			
+			if($requiredData['mailTemplateType']== '3'){
+			    return $this->sendMailToCustomerForReport($requiredData);    
+			}
+			if($requiredData['mailTemplateType']== '4'){
+			    return $this->sendMailToCustomerForInvoice($requiredData);    
+			}
+		}
+		return true;
+	}
+	
+	/************************************************************
+	**if mailTemplateType = 1 then send Mail To Customer On Sample Booking
+	*
+	*send Mail To Customer On Invoice generation
+	*
+	************************************************************/
+	function sendMailToCustomerOnSampleBooking($mailingData){
+		
+		global $models,$order,$invoice;
+		
+		$status    = false;
+		$sampleId  = !empty($mailingData['sample_id']) ? $mailingData['sample_id'] : '0';
+		$adminMail = 'deepika.sharma@itclabs.com';
+		     
+		$customer = DB::table('samples')
+			    ->where('samples.sample_id','=',$sampleId)
+			    ->where('samples.customer_email','=',$mailingData['customer_email'])
+			    ->select('samples.*')
+			    ->first();
+		
+		$userData = array(
+				'adminEmail' 	=> $adminMail,
+				'name'    	=> $customer->customer_name,
+				'email'   	=> $customer->customer_email,
+				'sampleNo'   	=> $customer->sample_no,
+				'subject' 	=> 'New Customer Registration Request from Sample Receiving!'
+		);
+		
+		$status = Mail::send('email.templates.emailSampleBooking', ['user' => $userData], function ($msg) use ($userData) {
+		    $msg->from(FROM_EMAIL, FROM_NAME);
+			$msg->to($userData['adminEmail'])->subject($userData['subject']);
+		});
+	    
+		return $status ? true : false;    
+	}
+	
+	/************************************************************
+	**if mailTemplateType = 1 then send Mail To Customer On Order Place
+	*
+	*send Mail To Customer On Invoice generation
+	*
+	************************************************************/
+	function sendMailToCustomerOnOrderPlace($mailingData){
+		
+		global $models,$order,$invoice;
+	    
+		$status   = '0';
+		$dataSave = array();
+		$orderId  = !empty($mailingData['order_id']) ? $mailingData['order_id'] : '0';
+		
+		if($orderId){
+			$orderDetail = $order->getOrder($orderId);
+			if(!empty($orderDetail->order_no)){
+				
+				list($emailTemplateBlade,$fromName,$fromEmail) = $models->__mailSettingVariablesBooking($orderDetail->product_category_id);
+				
+				$userData = array(
+					'name'    		=> $orderDetail->contact_name1,
+					'email'   		=> $orderDetail->customer_email,
+					'order_no'		=> $orderDetail->order_no,
+					'sample_name'		=> $orderDetail->sample_description,
+					'batch_no'		=> $orderDetail->batch_no,
+					'expected_due_date'	=> $orderDetail->expected_due_date,
+					'from_name'		=> $fromName,
+					'from_email'		=> $fromEmail,
+					'expected_due_date'	=> $orderDetail->expected_due_date,
+					'subject' 		=> 'Order Booking Confirmation:'.$orderDetail->order_no,
+				);
+				
+				$status = Mail::send($emailTemplateBlade, ['user' => $userData], function ($msg) use ($userData) {
+					$msg->from($userData['from_email'], $userData['from_name']);
+					$msg->to($userData['email'], $userData['name'])->subject($userData['subject']);
+				});
+				
+				$dataSave['mail_content_type'] 	= $mailingData['mailTemplateType'];
+				$dataSave['order_id'] 	 	= $orderId;
+				$dataSave['customer_id'] 	= $orderDetail->customer_id;
+				$dataSave['mail_header'] 	= $userData['subject'];
+				$dataSave['mail_body'] 	 	= $emailTemplateBlade;
+				$dataSave['mail_date'] 	 	= CURRENTDATETIME;
+				$dataSave['mail_by'] 	 	= USERID;
+				$dataSave['mail_status'] 	= Mail::failures() ? 0 : 1;
+				DB::table('order_mail_dtl')->insertGetId($dataSave);
+				return true;
+			}
+		}
+		return false; 
+	}
+	
+	/************************************************************
+	**if mailTemplateType = 3 then mail for Report Generation.
+	*
+	*Sending Report Mail to customer
+	*
+	************************************************************/
+	function sendMailToCustomerForReport($mailingData){
+		
+		global $models,$order,$invoice;
+	
+		$status      		= '0';		
+		$dirName     		= SITE_URL.REPORT_PATH;
+		$dataSave    		= array();
+		$reportId    		= !empty($mailingData['order_id']) ? $mailingData['order_id'] : '0';
+		$reportTypeMailType 	= !empty($mailingData['postedData']['downloadType']) ? $mailingData['postedData']['downloadType'] : '0';
+		
+		if(!empty($reportId)){
+			$orderDetail = $order->getOrder($reportId);
+			if(!empty($orderDetail->report_no)){
+				
+				list($emailTemplateBlade,$fromName,$fromEmail) = $models->__mailSettingVariablesReports($orderDetail->product_category_id);
+			
+				$userData = array(
+					'name'     	=> $orderDetail->contact_name1,
+					'email'   	=> $orderDetail->customer_email,
+					'toEmails'    	=> $orderDetail->to_emails,
+					'ccEmails'    	=> $orderDetail->cc_emails,
+					'order_no'	=> $orderDetail->order_no,
+					'sample_name'	=> $orderDetail->sample_description,
+					'fileName' 	=> $orderDetail->report_no.'.pdf',
+					'dirName'  	=> $dirName,
+					'from_name'	=> $fromName,
+					'from_email'	=> $fromEmail,
+					'subject'  	=> strtoupper('Test Report-'.$orderDetail->customer_name.'-'.$orderDetail->order_no)
+				);
+				
+				$status = Mail::send($emailTemplateBlade, ['user' => $userData], function ($msg) use ($userData) {
+					$msg->from($userData['from_email'], $userData['from_name']);
+					if(!empty($userData['toEmails']))$msg->to($userData['toEmails']);
+					if(!empty($userData['ccEmails']))$msg->cc($userData['ccEmails']);
+					$msg->subject($userData['subject']);
+					$msg->attach($userData['dirName'].$userData['fileName']);
+				});
+				
+				$dataSave['mail_content_type'] 	= $mailingData['mailTemplateType'];
+				$dataSave['order_id'] 	 	= $orderDetail->order_id;
+				$dataSave['customer_id'] 	= $orderDetail->customer_id;
+				$dataSave['mail_header'] 	= $userData['subject'];
+				$dataSave['mail_body'] 	 	= $emailTemplateBlade;
+				$dataSave['mail_date'] 	 	= CURRENTDATETIME;
+				$dataSave['mail_type'] 	 	= $reportTypeMailType;
+				$dataSave['mail_by'] 	 	= USERID;
+				$dataSave['mail_status'] 	= Mail::failures() ? 0 : 1;
+				DB::table('order_mail_dtl')->insertGetId($dataSave);
+				return true;
+			}
+		}
+		return false; 
+	}
+	
+	/************************************************************
+	**if mailTemplateType = 4 then mail for Invoice Generation.
+	*
+	*send Mail To Customer On Invoice generation
+	*
+	************************************************************/
+	function sendMailToCustomerForInvoice($mailingData){
+		
+		global $models,$order,$invoice;
+		
+		$status    = '0';
+		$dirName   = SITE_URL.INVOICE_PATH;
+		$dataSave  = array();
+		$invoiceId = !empty($mailingData['invoice_id']) ? $mailingData['invoice_id'] : '0';
+		
+		if($invoiceId){
+			$invoiceData = $invoice->getInvoiceData($invoiceId);			
+			if(!empty($invoiceData['invoiceHeader']['invoice_no'])){
+				
+				$productCategoryId = !empty($invoiceData['invoiceBody'][0]['product_category_id']) ? $invoiceData['invoiceBody'][0]['product_category_id'] : '0';
+				
+				list($emailTemplateBlade,$fromName,$fromEmail) = $models->__mailSettingVariablesInvoics($productCategoryId);
+				
+				$userData = array(
+					'name'    		=> $invoiceData['invoiceHeader']['contact_name1'],
+					'email'   		=> $invoiceData['invoiceHeader']['customer_email'],
+					'toEmails'    		=> $invoiceData['invoiceHeader']['to_emails'],
+					'ccEmails'    		=> $invoiceData['invoiceHeader']['cc_emails'],
+					'invoice_file_name'	=> $invoiceData['invoiceHeader']['invoice_no'].'.pdf',
+					'dirName'		=> $dirName,
+					'order_no'		=> $invoiceData['invoiceHeader']['order_no'],
+					'invoice_no'		=> $invoiceData['invoiceHeader']['invoice_no'],
+					'from_name'		=> $fromName,
+					'from_email'		=> $fromEmail,
+					'subject' 		=> 'Invoice Mail!',
+				);
+				
+				$status = Mail::send($emailTemplateBlade, ['user' => $userData], function ($msg) use ($userData) {
+					$msg->from($userData['from_email'], $userData['from_name']);
+					if(!empty($userData['toEmails']))$msg->to($userData['toEmails']);
+					if(!empty($userData['ccEmails']))$msg->cc($userData['ccEmails']);
+					$msg->subject($userData['subject']);
+					$msg->attach($userData['dirName'].$userData['invoice_file_name']);
+				});
+				
+				$dataSave['mail_content_type'] 	= $mailingData['mailTemplateType'];
+				$dataSave['invoice_id'] 	= $invoiceData['invoiceHeader']['invoice_id'];
+				$dataSave['customer_id'] 	= $invoiceData['invoiceHeader']['customer_id'];
+				$dataSave['mail_header'] 	= $userData['subject'];
+				$dataSave['mail_body'] 	 	= $emailTemplateBlade;
+				$dataSave['mail_date'] 	 	= CURRENTDATETIME;
+				$dataSave['mail_by'] 	 	= USERID;
+				$dataSave['mail_status'] 	= Mail::failures() ? 0 : 1;
+				DB::table('order_mail_dtl')->insertGetId($dataSave);
+				return true;		
+			}
+		}
+		return false;
+	}
+}

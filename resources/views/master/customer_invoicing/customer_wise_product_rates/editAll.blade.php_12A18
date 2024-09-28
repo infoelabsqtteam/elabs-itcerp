@@ -1,0 +1,69 @@
+<div class="row" ng-if="editAllCustomerWiseProductRateDiv">
+<div class="panel panel-default">
+	<div class="panel-body">
+	    <div class="row header-form">
+		<span class="pull-left headerText"><strong>Edit Customer Wise Product</strong></span>
+		<span class="pull-right pull-custom">
+		    <button type="button" class="btn btn-primary" ng-click="navigateFormPage('list');">Back</button>
+		</span>
+	    </div>
+	    <form method="POST" role="form" id="erpEditCustomerWiseAllProductRateForm" name="erpEditCustomerWiseAllProductRateForm" novalidate>
+
+        <!-- Product Listing--->
+        <hr ng-if="for_fixed_rate==false">
+
+          <div class="row" ng-if="for_fixed_rate==false">
+            <div class="header">
+              <div class="col-xs-4 text-left mT5"><label>Product Name</div>
+              <div class="col-xs-4 text-left mT5"><label>Product Alias Name<em class="asteriskRed">*</em></div>
+              <div class="col-xs-4 text-left mT5"><label>Enter Rate</label><span class="width30" style="float: right; margin-top: -5px;"><input type="text" class="seachBox form-control ng-pristine ng-untouched ng-valid" placeholder="Search Product" ng-model="filterInvoicingProductRateList"></span></div>
+            </div>
+
+            <div class="mT20" dir-paginate="productObj in productAliasRateList | filter : filterInvoicingProductRateList | itemsPerPage : {{ defined('PERPAGE') ? PERPAGE : 15 }} | orderBy:'-productObj.rate'">
+              <div class="col-xs-4 form-group text-left">[[productObj.product_name]]
+                <input type="hidden" name="cir_c_product_id_1[]"  ng-model="productObj.cir_id" ng-value="[[productObj.cir_id]]">
+              </div>
+              <div class="col-xs-4 form-group text-left">[[productObj.name]]
+                <input type="hidden" name="cir_c_product_id[]" ng-model="productObj.id" ng-value="productObj.id">
+              </div>
+
+              <div class="col-xs-4 form-group text-left">
+                <input type="number"
+                  min="0"
+                  ng-if="!productObj.rate"
+                  class="form-control invoicing_rate width30"
+                  ng-model="editCustomerWiseProductRate.invoicing_rate_[[productObj.id]]"
+                  name="invoicing_rate[]"
+                  class="form-control"
+                  placeholder="Rate">
+                <input type="number"
+                  min="0"
+                  ng-if="productObj.rate"
+                  class="form-control invoicing_rate width30"
+                  ng-model="editCustomerWiseProductRate.invoicing_rate_[[productObj.id]]"
+                  name="invoicing_rate[]"
+                  value="[[productObj.rate]]"
+                  class="form-control"
+                  placeholder="Rate">
+              </div>
+
+            </div>
+            <div ng-if="productAliasRateList.length"><div class="box-footer clearfix"><dir-pagination-controls></dir-pagination-controls></div></div>
+            <div ng-if="!productAliasRateList.length">No record found.</div>
+          </div>
+        <hr>
+
+		<!--Save Button-->
+		<div class="row">
+		    <div class="col-xs-12 form-group text-right mT10">
+			<label for="submit">{{ csrf_field() }}</label>
+			<input type="hidden" ng-value="editCustomerWiseProductRate.cir_id" name="cir_id" ng-model="editCustomerWiseProductRate.cir_id">
+			<button type="submit"  class="btn btn-primary" ng-click="funUpdateCustomerWiseAllProductRate()">Update</button>
+			<button type="button" class="btn btn-default" ng-click="navigateFormPage('list')">Cancel</button>
+		    </div>
+		</div>
+		<!--Save Button-->
+	    </form>
+	</div>
+    </div>
+</div>

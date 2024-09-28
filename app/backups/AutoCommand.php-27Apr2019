@@ -1,0 +1,358 @@
+<?php
+/*****************************************************
+*Description : Common Function Configuration File
+*Created By  : Praveen-Singh
+*Created On  : 15-Dec-2017
+*Modified On : 24-Sept-2018
+*Package     : ITC-ERP-PKL
+******************************************************/
+
+namespace App;
+
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Model;
+
+use DB;
+use File;
+
+class AutoCommand extends Model
+{
+    /****************************************
+    *function    : Save Auto mailing Data.
+    *Created By  : Praveen Singh
+    *Created On  : 01-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 03-July-2018
+    *****************************************/
+    function saveAutoMail($requiredData){
+	
+	global $models,$order,$report,$invoice;
+	
+	/*****************************************************
+	*if mailSavingType = 1 then saving data for VOC .
+	*if mailSavingType = 2 then saving data for Order Confirmation .
+	******************************************************/
+	if(!empty($requiredData['mailSavingType']) && defined('SEND_MAIL_NOTIFICATION') && SEND_MAIL_NOTIFICATION  == '1'){
+	    if($requiredData['mailSavingType']== '1'){
+		return $this->saveVocMailDataDetail($requiredData);    
+	    }
+	    if($requiredData['mailSavingType']== '2'){
+		return $this->saveOrderConfirmationMailDataDetail($requiredData);    
+	    }
+	}
+	return true;	
+    }
+    
+    /****************************************
+    *function    : Sending Auto mail Data.
+    *Created By  : Praveen Singh
+    *Created On  : 03-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 04-July-2018
+    *****************************************/
+    function sendAutoMail($requiredData){
+	
+	global $models,$order,$report,$invoice;
+	
+	/*****************************************************
+	*if mailSendingType = 1 then mail for VOC.
+	*if mailSendingType = 1 then mail for order Confirmation.
+	******************************************************/
+	if(!empty($requiredData['mailSendingType']) && defined('SEND_MAIL_NOTIFICATION') && SEND_MAIL_NOTIFICATION  == '1'){
+	    if($requiredData['mailSendingType']== '1'){
+		return $this->sendVocMailDataDetail($requiredData);    
+	    }
+	    if($requiredData['mailSendingType']== '2'){
+		return $this->sendOrderConfirmationMailDataDetail($requiredData);    
+	    }
+	}
+	return true;
+    }
+    
+    /****************************************
+    *function    : Inserting Voc Mail Data.
+    *Created By  : Ruby Thakur
+    *Created On  :01-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 03-July-2018
+    *****************************************/
+    function saveVocMailDataDetail($mailingData){
+	
+        global $models,$order,$report,$invoice;
+	
+	//Getting first and last day of the Current Month
+	list($monthFirstDate,$monthLastDate) = $models->getFirstAndLastDayOfMonth(date('Y-m-d'),$format = 'Y-m-d');
+	
+        $customerData = DB::table('customer_master')
+		    ->select('customer_master.customer_id')
+		    ->join('order_master','order_master.customer_id','customer_master.customer_id')
+		    ->join('order_report_details','order_report_details.report_id','order_master.order_id')
+		    ->whereBetween(DB::raw("DATE(order_report_details.approving_date)"),array($monthFirstDate,$monthLastDate))
+		    ->groupBy('customer_master.customer_id')
+		    ->orderBy('customer_master.customer_id')
+		    ->get();
+		    
+	if(!empty($customerData)){
+            foreach($customerData as $key => $values){		
+		$smdOrderIds = DB::table('order_master')
+				->join('customer_master','customer_master.customer_id','order_master.customer_id')
+				->join('order_report_details','order_report_details.report_id','order_master.order_id')
+				->where('order_master.customer_id','=',$values->customer_id)
+				->whereBetween(DB::raw("DATE(order_report_details.approving_date)"),array($monthFirstDate,$monthLastDate))
+				->pluck('order_master.order_id')
+				->all();
+		if(!empty($smdOrderIds)){
+		    $dataSave 			   = array();
+		    $dataSave['smd_content_type']  = '1';
+		    $dataSave['smd_customer_id']   = $values->customer_id;
+		    $dataSave['smd_order_ids']     = implode(',',array_values($smdOrderIds));
+		    $dataSave['smd_template_name'] = 'email.templates.voc.emailCustomerVoc';
+		    $dataSave['smd_date'] 	   = date('Y-m-d H:i:s');
+		    $dataSave['smd_status']        = '0';		    
+		    DB::table('scheduled_mail_dtl')->insertGetId($dataSave);
+		}		
+            }            
+        }
+    }
+    
+    /****************************************
+    *function    : Saving Order Confirmation Mail Data.
+    *Created By  : Praveen Singh
+    *Created On  : 03-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 04-July-2018
+    *****************************************/
+    public function saveOrderConfirmationMailDataDetail($mailingData){
+	
+	global $models,$order,$report,$invoice;
+	
+	$orderId  = !empty($mailingData['order_id']) ? $mailingData['order_id'] : '0';
+	
+	if($orderId){
+	    $orderDetail = $order->getOrderDetail($orderId);
+	    if(!empty($orderDetail->order_id) && !empty($orderDetail->product_category_id) && !$order->isOrderBackDateBooking($orderDetail->order_id)){
+		list($emailTemplateBlade,$fromName,$fromEmail) = $models->__mailSettingVariablesBooking($orderDetail->product_category_id);
+		$dataSave 			= array();
+		$dataSave['smd_content_type'] 	= '2';
+		$dataSave['smd_customer_id'] 	= $orderDetail->customer_id;
+		$dataSave['smd_order_ids'] 	= $orderDetail->order_id;
+		$dataSave['smd_template_name'] 	= $emailTemplateBlade;
+		$dataSave['smd_date'] 		= date('Y-m-d H:i:s');
+		$dataSave['smd_status'] 	= '0';
+		DB::table('scheduled_mail_dtl')->insertGetId($dataSave);
+	    }
+	}
+    }
+    
+    /****************************************
+    *function    : Sending Voc Mail Sent Data.
+    *Created By  : Ruby Thakur
+    *Created On  : 01-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 03-July-2018
+    *****************************************/
+    public function sendVocMailDataDetail($mailingData){
+	
+        global $models,$order,$report,$invoice;
+	
+        $response   = $responseData = array();
+	$siteName   = defined('SITE_NAME') ? '['.SITE_NAME.']' : '[ITC-LAB]';
+	$mailStatus = '0';
+	
+	//Deleting Mail Data whose semd mail counter exceed 3 times
+	DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_mail_counter','=','2')->where('scheduled_mail_dtl.smd_content_type','=','1')->delete();
+		
+	$autoScheduledDtlData = DB::table('scheduled_mail_dtl')->select('scheduled_mail_dtl.smd_id','scheduled_mail_dtl.smd_template_name','scheduled_mail_dtl.smd_customer_id','scheduled_mail_dtl.smd_order_ids')
+				->where('scheduled_mail_dtl.smd_status','=','0')
+				->where('scheduled_mail_dtl.smd_content_type','=','1')
+				->orderBy('scheduled_mail_dtl.smd_customer_id')
+				->take('200')
+				->get();
+	    
+        if(!empty($autoScheduledDtlData)){
+            foreach($autoScheduledDtlData as $key => $values){
+		
+		list($toEmails,$ccEmails) = $order->getCustomerEmailToCC($values->smd_customer_id);
+		$totalRecipient = !empty($toEmails) ? count($toEmails) : '0';               
+		$customerData   = DB::table('customer_master')->select('customer_email','customer_name')->where('customer_id','=',$values->smd_customer_id)->first();
+		
+		$asdOrderIds    = !empty($values->smd_order_ids) ? array_values(explode(',',$values->smd_order_ids)) : array();		
+		$orderDetail    = DB::table('order_master')
+				->join('customer_master','customer_master.customer_id','order_master.customer_id')
+				->join('scheduled_mail_dtl','scheduled_mail_dtl.smd_customer_id','order_master.customer_id')
+				->join('samples','samples.sample_id','order_master.sample_id')
+				->join('order_report_details','order_report_details.report_id','order_master.order_id')
+				->join('product_master_alias','product_master_alias.c_product_id','order_master.sample_description_id')
+				->whereIn('order_master.order_id',$asdOrderIds)
+				->where('order_master.customer_id','=',$values->smd_customer_id)
+				->where('scheduled_mail_dtl.smd_status','=','0')
+				->whereNotNull('order_report_details.report_date')
+				->select('order_master.order_id as s_no','order_master.order_no','product_master_alias.c_product_name as sample_description','order_master.booking_date as order_booking_date','order_master.expected_due_date','order_report_details.report_date')
+				->get();
+		
+		//formating the time stamp	
+		$models->formatTimeStampFromArray($orderDetail,'d-m-Y');
+
+		if(!empty($orderDetail)){
+		    
+		    $tatCount = array();		    
+		    foreach($orderDetail as $keyIn => $data){
+			$data->s_no 	  = $keyIn + 1;
+			$data->TAT 	  = $models->sub_days_between_two_date($data->expected_due_date,$data->order_booking_date);
+			$data->within_TAT = $models->withInOrBeforeTat($data->report_date,$data->expected_due_date);
+			$tatCount[$keyIn] = !empty($data->within_TAT) && $data->within_TAT == 'Y' ? $data->within_TAT : '';
+		    }		    
+		    //summary Detail
+		    $summaryDetail['sample_count']   	 = count($orderDetail);
+		    $summaryDetail['With_in_TAT']    	 = count(array_filter($tatCount));
+		    $summaryDetail['performance_(in_%)'] = $models->performancePercentage($orderDetail,$tatCount);                                
+		    
+		    $userData = array(
+			'orderData'    	=> $orderDetail,
+			'toEmails'   	=> $toEmails,
+			'template_name' => $values->smd_template_name,
+			'customer'	=> $customerData->customer_name,
+			'from_name'	=> defined('FROM_NAME') ? FROM_NAME : 'Administrator ITC LAB',
+			'from_email'	=> defined('FROM_EMAIL') ? FROM_EMAIL : 'itcerp@itclabs.com',
+			'voc_file_name'	=> 'voice_of_customer.xlsx',
+			'subject' 	=> $siteName.' : Booking Detail : '.date('F-Y').' : '.$customerData->customer_name,
+		    );
+		}
+		
+		$responseData 			= !empty($userData) ? json_decode(json_encode($userData),true) : array();
+		$response['customer_name']      = $userData['customer'];
+		$response['heading']            = 'SAMPLE DETAIL:';
+		$response['tableHead'] 		= !empty($responseData['orderData']) ? $models->filterScheduleTableHead(array_keys(end($responseData['orderData']))) : array();
+		$response['tableBody'] 		= !empty($responseData) ? $responseData : array();
+		$response['summaryHeading']     = 'SUMMARY:';
+		$response['summaryTableHead'] 	= !empty($summaryDetail) ? $models->filterScheduleTableHead(array_keys($summaryDetail)) : array();
+		$response['summaryTableBody'] 	= !empty($summaryDetail) ? $summaryDetail : array();
+		
+		if(!empty($response['tableBody']['template_name']) && !empty($response['tableBody']['toEmails']) && $models->validateEmailIds($response['tableBody']['toEmails'])){		    
+		    Mail::send($response['tableBody']['template_name'],['order' => $response], function ($msg) use ($response) {
+			$msg->from($response['tableBody']['from_email'], $response['tableBody']['from_name']);
+			if(!empty($response['tableBody']['toEmails']))$msg->to($response['tableBody']['toEmails']);
+			$msg->subject($response['tableBody']['subject']);
+			if(!empty($response['tableBody']['voc_file_name']) && file_exists(public_path().'/images/voc/'.$response['tableBody']['voc_file_name']))$msg->attach(public_path().'/images/voc/'.$response['tableBody']['voc_file_name']);
+		    });		    
+		    $mailStatus = $totalRecipient == count(Mail::failures()) ? '0' : '1';		//Getting Mail Status
+		}else{
+		    $mailStatus = '0';	//If Mail Template Not Found/Getting Mail Status	
+		}
+		
+		//Saving Record in Order Mail Detail
+		$dataSave 			   = array();
+		$dataSave['voc_customer_id']   	   = $values->smd_customer_id;
+		$dataSave['voc_order_ids'] 	   = $values->smd_order_ids;
+		$dataSave['voc_template_name']     = $values->smd_template_name;
+		$dataSave['voc_mail_date'] 	   = date('Y-m-d H:i:s');
+		$dataSave['voc_status'] 	   = $mailStatus;		    
+		DB::table('voc_mail_dtl')->insertGetId($dataSave);
+			
+		if($mailStatus){
+		    //Deleting Send Mail Raw Data
+		    DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_content_type','=','1')->where('smd_id','=',$values->smd_id)->delete();
+		}else{
+		    //Updating Mail end Counter
+		    $counterDetail = DB::table('scheduled_mail_dtl')->where('smd_id','=',$values->smd_id)->first();
+		    DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_id','=',$values->smd_id)->update(['scheduled_mail_dtl.smd_mail_counter' => $counterDetail->smd_mail_counter + 1]);
+		}
+            }
+        }
+    }
+    
+    /****************************************
+    *function    : Sending Order Confirmation Mail Data.
+    *Created By  : Praveen Singh
+    *Created On  : 03-July-2018
+    *Modified by : Praveen Singh
+    *Modified On : 04-July-2018
+    *****************************************/
+    public function sendOrderConfirmationMailDataDetail($mailingData){
+	
+	global $models,$order,$report,$invoice;
+	
+	$siteName   = defined('SITE_NAME') ? '['.SITE_NAME.']' : '[ITC-LAB]';
+	$mailStatus = '0';
+	
+	//Deleting Mail Data whose semd mail counter exceed 3 times
+	DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_mail_counter','=','3')->where('scheduled_mail_dtl.smd_content_type','=','2')->delete();
+	
+	$scheduledMailData = DB::table('scheduled_mail_dtl')->select('scheduled_mail_dtl.smd_id','scheduled_mail_dtl.smd_date','scheduled_mail_dtl.smd_template_name','scheduled_mail_dtl.smd_customer_id','scheduled_mail_dtl.smd_order_ids')
+			    ->where('scheduled_mail_dtl.smd_content_type','=','2')
+			    ->where('scheduled_mail_dtl.smd_status','=','0')
+			    ->whereNotNull('scheduled_mail_dtl.smd_order_ids')
+			    ->whereNotNull('scheduled_mail_dtl.smd_template_name')
+			    ->take('200')
+			    ->get();
+	
+        if(!empty($scheduledMailData)){
+            foreach($scheduledMailData as $key => $values){		
+		
+		$orderDetail = $order->getOrder(!empty($values->smd_order_ids) ? $values->smd_order_ids : '0');	    
+		if(!empty($orderDetail->order_no)){		    
+		    
+		    list($emailTemplateBlade,$fromName,$fromEmail) = $models->__mailSettingVariablesBooking($orderDetail->product_category_id);
+		    $emailSubject   		 = implode(' | ',array($orderDetail->customer_name,$orderDetail->sample_description,$orderDetail->batch_no,$orderDetail->order_no));
+		    $totalRecipient 		 = count($orderDetail->to_emails) + count($orderDetail->cc_emails);
+		    $emailTemplateBlade 	 = !empty($values->smd_template_name) ? $values->smd_template_name : $emailTemplateBlade;
+		    list($fileName,$fileNameDir) = $models->downloadSaveDynamicPDF(array('order_id' => $orderDetail->order_id),$contentType='orderConfirmation');
+		    
+		    $userData = array(
+			'name'    		=> $orderDetail->contact_name1,
+			'toEmails'    		=> $orderDetail->to_emails,
+			'ccEmails'    		=> $orderDetail->cc_emails,
+			'order_no'		=> $orderDetail->order_no,
+			'sample_name'		=> $orderDetail->sample_description,
+			'batch_no'		=> $orderDetail->batch_no,
+			'expected_due_date'	=> $orderDetail->expected_due_date,
+			'from_name'		=> $fromName,
+			'from_email'		=> $fromEmail,
+			'fileName' 		=> $fileNameDir,
+			'expected_due_date'	=> $orderDetail->expected_due_date,
+			'subject' 		=> $siteName.' : Order-Booking-Confirmation : '.$emailSubject,	//Customer Name,Sample Name,Batch No. & Order Booking No.
+		    );
+		    
+		    if(!empty($emailTemplateBlade) && !empty($userData['toEmails']) && $models->validateEmailIds($userData['toEmails'])){
+			Mail::send($emailTemplateBlade, ['user' => $userData], function ($msg) use ($userData) {
+			    $msg->from($userData['from_email'], $userData['from_name']);
+			    if(!empty($userData['toEmails']))$msg->to($userData['toEmails']);
+			    $msg->subject($userData['subject']);
+			    $msg->attach($userData['fileName']);
+			});
+			$mailStatus = $totalRecipient == count(Mail::failures()) ? '0' : '1';		//Getting Mail Status	
+		    }else{
+			$mailStatus = '0'; //If Mail Template Not Found/Getting Mail Status	
+		    }
+
+		    //Saving Record in Order Mail Detail
+		    $dataSave 				= array();
+		    $dataSave['mail_content_type'] 	= '2';
+		    $dataSave['order_id'] 	 	= $orderDetail->order_id;
+		    $dataSave['customer_id'] 		= $orderDetail->customer_id;
+		    $dataSave['mail_header'] 		= $userData['subject'];
+		    $dataSave['mail_body'] 	 	= !empty($emailTemplateBlade) ? $emailTemplateBlade : NULL;
+		    $dataSave['mail_date'] 	 	= !empty($values->smd_date) ? trim(date('Y-m-d',strtotime($values->smd_date)).' '.date("H:i:s")) : date('Y-m-d H:i:s');
+		    $dataSave['mail_by'] 	 	= '1';
+		    $dataSave['mail_status'] 		= $mailStatus;
+		    $dataSave['created_at'] 		= !empty($values->smd_date) ? trim(date('Y-m-d',strtotime($values->smd_date)).' '.date("H:i:s")) : date('Y-m-d H:i:s');
+		    $dataSave['updated_at'] 		= !empty($values->smd_date) ? trim(date('Y-m-d',strtotime($values->smd_date)).' '.date("H:i:s")) : date('Y-m-d H:i:s');
+		    DB::table('order_mail_dtl')->insertGetId($dataSave);
+			    
+		    if($mailStatus){			
+			//Deleting Send Mail Raw Data
+			DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_content_type','=','2')->where('smd_id','=',$values->smd_id)->delete();
+		    }else{
+			//Updating Mail end Counter
+			$counterDetail = DB::table('scheduled_mail_dtl')->where('smd_id','=',$values->smd_id)->first();
+			DB::table('scheduled_mail_dtl')->where('scheduled_mail_dtl.smd_id','=',$values->smd_id)->update(['scheduled_mail_dtl.smd_mail_counter' => $counterDetail->smd_mail_counter + 1]);
+		    }
+		    
+		    //Deleting Temp Directory File
+		    !empty($userData['fileName']) ? File::delete($userData['fileName']) : '';
+		}
+	    }
+	}
+    }
+    
+}

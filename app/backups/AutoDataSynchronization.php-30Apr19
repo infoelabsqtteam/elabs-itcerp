@@ -1,0 +1,292 @@
+<?php
+/*****************************************************
+*Description : Auto Data Synchronization File for Web Module.
+*Created By  : Praveen-Singh
+*Created On  : 08-April-2019
+*Modified On : 08-April-2019
+*Package     : ITC-ERP-PKL
+******************************************************/
+
+namespace App;
+
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Model;
+
+use DB;
+use File;
+
+class AutoDataSynchronization extends Model
+{
+    /****************************************
+    *function    : Auto Data Synchronization
+    *Created By  : Praveen Singh
+    *Created On  : 08-April-2019
+    *Modified by : Praveen Singh
+    *Modified On : 08-April-2019
+    *****************************************/
+    function funSynActionType($requiredData){
+	
+	global $models,$order,$report,$invoice,$numbersToWord;
+	
+	/*****************************************************
+	*if actionContentType = 1 then Auto Data Synchronization
+	******************************************************/
+	if(!empty($requiredData['actionContentType'])){
+	    if($requiredData['actionContentType']== '1'){
+		return $this->copyOrdersWithStatusCommand($requiredData);    
+	    }
+	}
+	return true;	
+    }
+    
+    /****************************************
+    *function    : Copy Orders with Status
+    *Created By  : Praveen Singh
+    *Created On  : 08-April-2019
+    *Modified by : Praveen Singh
+    *Modified On : 08-April-2019
+    *****************************************/
+    function copyOrdersWithStatusCommand($requiredData){
+	
+        global $models,$order,$report,$invoice,$numbersToWord;
+        
+        $dataSave = $dataUpdate = $dataTrackSave = $dataTrackUpdate = array();
+        
+        try {
+            
+            //Trancating the records on last day of the every month
+            //$this->__trancateOrderStatusReportInvoiceDetail(date('Y-m-d'));
+        
+            //Starting transaction
+            DB::beginTransaction();
+            
+	    list($monthFirstDate, $monthLastDate) = $models->getFirstAndLastDayOfMonth(date('Y-m-d'), $format = 'Y-m-d');
+            $orderDataSource = DB::table('order_master')
+                                ->join('customer_master', 'customer_master.customer_id', 'order_master.customer_id')
+                                ->join('product_master_alias','product_master_alias.c_product_id','order_master.sample_description_id')
+                                ->join('order_status','order_status.order_status_id','order_master.status')
+				->join('test_standard','test_standard.test_std_id','order_master.test_standard')
+                                ->whereBetween(DB::raw("DATE(order_master.booking_date)"), array($monthFirstDate, $monthLastDate))
+				->whereIn('customer_master.customer_code',DB::connection('mysql2')->table('users')->whereNotNull('users.code')->where('users.role_id','3')->pluck('users.code')->all())
+                                ->select('order_master.*','test_standard.test_std_name','product_master_alias.c_product_name as sample_description_name','customer_master.customer_code','customer_master.customer_email','order_status.order_status_name')
+				->get()
+                                ->toArray();
+                            
+            if(empty($orderDataSource))return;
+            
+            foreach($orderDataSource as $key => $values){
+                
+                $customerDetail = DB::connection('mysql2')->table('users')->where('users.code',!empty($values->customer_code) ? trim($values->customer_code) : '0')->where('users.role_id','3')->first();
+                $test_description = !empty($values->order_id) ? implode(', ',$order->getOrderParameterWithNames($values->order_id)) : NULL;
+                
+                if(!empty($customerDetail->id) && !empty($test_description)){
+		    
+                    //Saving/Updating Order Data in Order Table of Web Module.
+                    $ordersExist = DB::connection('mysql2')->table('orders')->where('orders.ref_id',$values->order_no)->first();
+                    if(!empty($ordersExist->id)){
+                        DB::connection('mysql2')->table('orders')->where('orders.id',$ordersExist->id)->update(
+                            [                          
+                                'sample_name'           => $values->sample_description_name,
+                                'testing_pharmacopoeia' => $values->test_std_name,
+                                'test_description'      => $test_description,
+                                'exp_delivery_date'     => $values->expected_due_date,
+                                'status'                => $values->order_status_name,
+                                'batch_number'          => $values->batch_no,
+                                'date_of_mfg'           => $values->mfg_date,
+                                'batch_size'            => $values->batch_size,
+                                'sample_qty'            => $values->sample_qty,
+                                'mfg_lic_no'            => $values->mfg_lic_no,
+                                'supplied_by'           => $values->supplied_by,
+                                'mfd_by'                => $values->manufactured_by
+                            ]
+                        );
+                        $orderId = $ordersExist->id;
+                    }else{
+                        //Order Table Data
+                        $dataSave                 = array();
+                        $dataSave['ref_id']       = $values->order_no;
+			$dataSave['user_id']      = '1';
+                        $dataSave['ref_date']     = $values->booking_date;
+                        $dataSave['customer_id']  = $customerDetail->id;
+                        $dataSave['sample_name']  = $values->sample_description_name;
+                        $dataSave['testing_pharmacopoeia'] = $values->test_std_name;
+                        $dataSave['test_description']      = $test_description;
+                        $dataSave['exp_delivery_date']     = $values->expected_due_date;
+                        $dataSave['status']                = $values->order_status_name;
+                        $dataSave['batch_number'] = $values->batch_no;
+                        $dataSave['date_of_mfg']  = $values->mfg_date;
+                        $dataSave['batch_size']   = $values->batch_size;
+                        $dataSave['sample_qty']   = $values->sample_qty;
+                        $dataSave['mfg_lic_no']   = $values->mfg_lic_no;
+                        $dataSave['supplied_by']  = $values->supplied_by;
+                        $dataSave['mfd_by']       = $values->manufactured_by;
+                        $dataSave['created_at']   = $values->created_at;
+                        $dataSave['updated_at']   = $values->updated_at;
+                        $orderId = DB::connection('mysql2')->table('orders')->insertGetId($dataSave);
+                    }
+		    
+		    if(!empty($orderId)){
+		    
+			//Checking Order Status changes in ERP Modules
+			$orderStatusExist = DB::connection('mysql2')->table('order_status')->where('order_status.order_id',$orderId)->orderBy('order_status.id','DESC')->first();
+			if(empty($orderStatusExist) || (!empty($orderStatusExist->status) && !empty($values->order_status_name) && strtolower($orderStatusExist->status) != strtolower($values->order_status_name))){
+			    $orderTrackRecord = $order->getOrderPerformerRecordAll($values->order_id);     //Order Status Table Data
+			    if(!empty($orderTrackRecord)){
+				foreach($orderTrackRecord as $OTkey => $orderTrack){				    
+				    //Saving/Updating Order Status                            
+				    if(!empty($orderTrack['status_id']) && !empty($orderTrack['status_name'])){
+					$orderStatusExist = DB::connection('mysql2')->table('order_status')->where('order_status.order_id',$orderId)->where('order_status.status',$orderTrack['status_name'])->first();
+					if(empty($orderStatusExist)){
+					    $dataTrackSave = array();
+					    $dataTrackSave['order_id']          = $orderId;
+					    $dataTrackSave['exp_delivery_date'] = $values->expected_due_date;
+					    $dataTrackSave['status']            = $orderTrack['status_name'];
+					    $dataTrackSave['order_status_date'] = $orderTrack['report_view_date_time'];
+					    DB::connection('mysql2')->table('order_status')->insertGetId($dataTrackSave);
+					}else{
+					    DB::connection('mysql2')->table('order_status')->where('order_status.id',$orderStatusExist->id)->update(
+						[
+						    'exp_delivery_date' => $values->expected_due_date,
+						    'status'            => $orderTrack['status_name'],
+						    'order_status_date' => $orderTrack['report_view_date_time']
+						]
+					    );
+					}
+				    }
+				}
+			    }
+			    
+			    //Updating the Report Files and Invoice Files
+			    if(!empty($values->status) && $values->status > '7'){
+				$this->__copyReportsInvoicesCommand($values,$orderId);
+			    }
+			}
+                    }
+                }
+            }
+
+            //Committing the queries
+	    DB::commit();
+
+        }catch(\Illuminate\Database\QueryException $ex){
+            DB::rollback();
+            $message = config('messages.message.OrderInternalErrorMsg');
+        } catch (\Throwable $e) {
+            DB::rollback();
+            $message = config('messages.message.OrderInternalErrorMsg');
+        }
+    }
+    
+    /****************************************
+    *function    : Copy Reports and Invoices
+    *Created By  : Praveen Singh
+    *Created On  : 08-April-2019
+    *Modified by : Praveen Singh
+    *Modified On : 08-April-2019
+    *****************************************/
+    function __copyReportsInvoicesCommand($orderData,$webOrderId){
+	
+	global $models,$order,$report,$invoice,$numbersToWord;
+        
+        //Setting Path
+        $rootPath = '/opt/lampp/htdocs/';
+        $reportSrcPath = defined('REPORT_PATH') ? $rootPath.'itcerp'.REPORT_PATH : $rootPath.'itcerp/public/images/sales/reports/';
+        $invoiceSrcPath = defined('INVOICE_PATH') ? $rootPath.'itcerp'.INVOICE_PATH : $rootPath.'itcerp/public/images/sales/invoices/';
+        $reportDesPath = $rootPath.'itclabs/public/images/reports/';
+        $invoiceDesPath = $rootPath.'itclabs/public/images/invoices/';
+        if(!is_dir($reportDesPath)){mkdir($reportDesPath, 0777, true);}     //Creating Directory with full permission
+        if(!is_dir($invoiceDesPath)){mkdir($invoiceDesPath, 0777, true);}   //Creating Directory with full permission
+        
+        //Report Section*****************************************************************
+        if(!empty($orderData->order_id) && !empty($orderData->order_no)){
+            $reportFileName = $orderData->order_no.'.pdf';
+            $reportSrc = $reportSrcPath.$reportFileName;            
+            !file_exists($reportSrc) ? $models->downloadSaveDynamicPDF(array('order_id' => $orderData->order_id, 'downloadType' => '1', 'doc_root' => $reportSrcPath),$contentType='report') : '';
+            $reportDes = $reportDesPath.$orderData->order_no.'.pdf';
+            if(file_exists($reportSrc)){		
+                //Coping report file from src to desc folder
+                shell_exec("cp -p $reportSrc $reportDes");		
+                $reportExist = DB::connection('mysql2')->table('reports')->where('reports.ref_id',$orderData->order_no)->first();
+                if(empty($reportExist)){
+                    //Reports Table Data
+                    $dataReportSave              = array();
+                    $dataReportSave['order_id']  = $webOrderId;
+                    $dataReportSave['ref_id']    = $orderData->order_no;
+                    $dataReportSave['ref_id']    = $orderData->order_no;
+                    $dataReportSave['file_name'] = $reportFileName;
+                    DB::connection('mysql2')->table('reports')->insertGetId($dataReportSave);
+                }else{
+                    DB::connection('mysql2')->table('reports')->where('reports.report_id',$reportExist->report_id)->update(['reports.file_name' => $reportFileName]);
+                }
+            }
+        }
+        
+        //Invoice Section*****************************************************************
+        $invoiceDetail = $order->gettingInvoiceDetailUsingOrderDetail($orderData->order_id); 
+        if(!empty($invoiceDetail->invoice_id) && !empty($invoiceDetail->invoice_no)){
+            $invoiceFileName = $invoiceDetail->invoice_no.'.pdf';
+            $invoiceSrc = $invoiceSrcPath.$invoiceFileName;
+            !file_exists($invoiceSrc) ? $models->downloadSaveDynamicPDF(array('invoice_id' => $invoiceDetail->invoice_id, 'downloadType' => '1','doc_root' => $invoiceSrcPath),$contentType='invoice') : '';
+            $invoiceDes = $invoiceDesPath.$invoiceDetail->invoice_no.'.pdf';
+            if(file_exists($invoiceSrc)){
+                //Coping Invoice file from src to desc folder
+                shell_exec("cp -p $invoiceSrc $invoiceDes");
+                $invoiceExist = DB::connection('mysql2')->table('order_invoice')->where('order_invoice.ref_id',$orderData->order_no)->first();
+                if(empty($invoiceExist)){
+                    //Invoice Table Data
+                    $dataInvoiceSave              = array();
+                    $dataInvoiceSave['order_id']  = $webOrderId;
+                    $dataInvoiceSave['ref_id']    = $orderData->order_no;
+                    $dataInvoiceSave['file_name'] = $invoiceFileName;
+                    DB::connection('mysql2')->table('order_invoice')->insertGetId($dataInvoiceSave);
+                }else{
+                    DB::connection('mysql2')->table('order_invoice')->where('order_invoice.invoice_id',$invoiceExist->invoice_id)->update(['order_invoice.file_name' => $invoiceFileName]);
+                }
+            }
+        }
+    }
+    
+    /****************************************
+    *function    : Trancating the records
+    *Created By  : Praveen Singh
+    *Created On  : 11-April-2019
+    *Modified by : Praveen Singh
+    *Modified On : 11-April-2019
+    *****************************************/
+    function __trancateOrderStatusReportInvoiceDetail($currentDate){
+        
+        global $models,$order,$report,$invoice,$numbersToWord;
+        
+        $rootPath   = '/opt/lampp/htdocs/';        
+	$currentDay = date('d',strtotime($currentDate));
+        $lastDay    = $models->get_last_day_of_the_month($currentDate);
+	
+	if(!empty($currentDay) && !empty($lastDay)){
+	    if($currentDay == $lastDay && in_array($lastDay,array('28','29','30','31'))){
+		
+		//Trancating orders table
+		DB::connection('mysql2')->table('orders')->truncate();
+		
+		//Trancating orders_preview table
+		DB::connection('mysql2')->table('orders_preview')->truncate();
+    
+		//Trancating order_status table
+		DB::connection('mysql2')->table('order_status')->truncate();
+		
+		//Trancating reports table
+		DB::connection('mysql2')->table('reports')->truncate();
+		
+		//Trancating order_invoice table
+		DB::connection('mysql2')->table('order_invoice')->truncate();
+		
+		//Removing all reports from directory
+		$reportDesPath = $rootPath.'itclabs/public/images/reports/*';
+		array_map('unlink', array_filter((array) glob($reportDesPath)));
+		
+		//Removing all invoices from directory
+		$invoiceDesPath = $rootPath.'itclabs/public/images/invoices/*';
+		array_map('unlink', array_filter((array) glob($invoiceDesPath)));
+	    }
+	}
+    }
+}

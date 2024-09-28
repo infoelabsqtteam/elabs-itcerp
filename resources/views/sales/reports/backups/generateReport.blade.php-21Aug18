@@ -1,0 +1,65 @@
+@if(!empty($viewData))
+    @if(array_key_exists('order', $viewData))  
+        @if(!empty($viewData['order']['product_category_id']))    
+            @if(!empty($withOutPartWiseReport)&& $withOutPartWiseReport =='12' && $viewData['order']['product_category_id'] == '1')
+                @include('sales.reports.generateReports.generateReportFoodWithoutPartWise')
+            @elseif($viewData['order']['product_category_id'] == '1')
+               @include('sales.reports.generateReports.generateReportFood')
+            @elseif($viewData['order']['product_category_id'] == '2')
+               @include('sales.reports.generateReports.generateReportPharma')
+            @elseif($viewData['order']['product_category_id'] == '3')
+               @include('sales.reports.generateReports.generateReportWater')
+            @elseif($viewData['order']['product_category_id'] == '4')
+               @include('sales.reports.generateReports.generateReportHelmet')
+            @elseif($viewData['order']['product_category_id'] == '5')
+               @include('sales.reports.generateReports.generateReportAyurvedic')
+            @elseif($viewData['order']['product_category_id'] == '6')
+               @include('sales.reports.generateReports.generateReportBuilding')
+            @elseif($viewData['order']['product_category_id'] == '7')
+                @include('sales.reports.generateReports.generateReportTextile')
+            @elseif($viewData['order']['product_category_id'] == '8')
+                @if(!empty($viewData['generalParameters']))
+                    @include('sales.reports.generateReports.generateReportEnvironmentWater')
+                @elseif(!empty($withOutPartWiseReport)&& $withOutPartWiseReport =='12')
+                    @include('sales.reports.generateReports.generateReportEnvironmentWithoutPartWise')
+                @else
+                  @include('sales.reports.generateReports.generateReportEnvironment')
+              @endif
+           @endif
+        @endif
+    @else
+        <?php $totalRows = count($viewData);?>
+        @foreach($viewData as $key => $viewData)
+            @if(!empty($viewData['order']['product_category_id']))
+                @if(!empty($withOutPartWiseReport)&& $withOutPartWiseReport =='12' && $viewData['order']['product_category_id'] == '1')
+                    @include('sales.reports.generateReports.generateReportFoodWithoutPartWise')
+                @elseif($viewData['order']['product_category_id'] == '1')
+                   @include('sales.reports.generateReports.generateReportFood')
+                @elseif($viewData['order']['product_category_id'] == '2')
+                   @include('sales.reports.generateReports.generateReportPharma')
+                @elseif($viewData['order']['product_category_id'] == '3')
+                   @include('sales.reports.generateReports.generateReportWater')
+                @elseif($viewData['order']['product_category_id'] == '4')
+                   @include('sales.reports.generateReports.generateReportHelmet')
+                @elseif($viewData['order']['product_category_id'] == '5')
+                   @include('sales.reports.generateReports.generateReportAyurvedic')
+                @elseif($viewData['order']['product_category_id'] == '6')
+                   @include('sales.reports.generateReports.generateReportBuilding')
+                @elseif($viewData['order']['product_category_id'] == '7')
+                   @include('sales.reports.generateReports.generateReportTextile')
+                @elseif($viewData['order']['product_category_id'] == '8')
+                    @if(!empty($viewData['generalParameters']))
+                        @include('sales.reports.generateReports.generateReportEnvironmentWater')
+                    @elseif(!empty($withOutPartWiseReport)&& $withOutPartWiseReport =='12')
+                        @include('sales.reports.generateReports.generateReportEnvironmentWithoutPartWise')
+                    @else
+                      @include('sales.reports.generateReports.generateReportEnvironment')
+                  @endif
+               @endif
+            @endif            
+            @if($key+1 < $totalRows)
+                <div style="page-break-after: always;"></div>
+            @endif            
+        @endforeach
+    @endif
+@endif

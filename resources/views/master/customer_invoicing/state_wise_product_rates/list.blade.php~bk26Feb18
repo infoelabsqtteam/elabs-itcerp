@@ -1,0 +1,61 @@
+<div  ng-hide="listStateWiseProductRateDiv">
+	<div class="row header">
+		<div role="new" class="navbar-form navbar-left">            
+			<span ng-click="funGetStateWiseProductRates(cirStateID)" class="pull-left"><strong id="form_title">State Wise Product Rate Listing<span ng-if="[[productStatesList.length]] > 0">([[stateWiseProductRateList.length]])</span></strong></span>
+		</div>            
+		<div role="new" class="navbar-form navbar-right">
+			<div style="margin: -5px; padding-right: 9px;">
+				<a href="javascript:;" ng-if="{{defined('ADD') && ADD}}" ng-click="navigateFormPage(cirStateID,'add');" class="btn btn-primary">Add New</a>
+			</div>
+		</div>
+	</div>
+	<div class="row row-border">
+		<div class="col-sm-12 headingGray">
+				<div class="col-sm-3">
+					<label>State Name </label><a href="javascript:;" class="generate" ng-click="funGetProductWiseStatesList()">Refresh</a>
+				</div>
+				<div class="col-sm-9">
+					<div class="col-sm-6">
+						<label>Product Name</label>
+					</div>
+					<div class="col-sm-5">
+						<label>Rate</label>
+					</div>
+					<div class="col-sm-1">
+						<label>Delete</label>
+					</div>
+				</div>
+		</div>
+		<div class="col-sm-12">
+				<div class="col-sm-3 overflow-scroll">
+					<div ng-repeat="stateObj in productStatesList" style="padding: 0;" class="col-sm-12 gray-listing" title="[[stateObj.name]]">
+						<div ng-if="cirStateID != stateObj.id" class="statename col-sm-10 calcWidth" ng-click="funGetStateWiseProductRates(stateObj.id)">
+							[[stateObj.name]] 
+						</div>
+						<div ng-if="cirStateID == stateObj.id" class="statename col-sm-10 calcWidth active-gray-listing"  ng-click="funGetStateWiseProductRates(stateObj.id)">
+							[[stateObj.name]]
+						</div>
+						<div class="col-sm-1">
+							<a style="margin-left: -14px;" href="javascript:;" ng-if="{{defined('EDIT') && EDIT}}" title="Update Record" class="btn btn-info btn-sm" ng-click="navigateFormPage(stateObj.id,'modify');"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-9 overflow-scroll">
+					<div class="col-sm-12" ng-repeat="stateWiseProductRateObj in stateWiseProductRateList" title="[[stateWiseProductRateObj.c_product_name]]">
+						<div class="col-sm-6 productname gray-listing" ng-click="funEditStateWiseProductRate(stateWiseProductRateObj.cir_id)">	
+							[[stateWiseProductRateObj.c_product_name]]
+						</div>
+						<div class="col-sm-5 productname gray-listing" ng-click="funEditStateWiseProductRate(stateWiseProductRateObj.cir_id)">
+							[[stateWiseProductRateObj.invoicing_rate]]
+						</div>
+						<div class="col-sm-1 gray-listing">
+							<a href="javascript:;" ng-if="{{defined('DELETE') && DELETE }}" title="Delete Record" class="btn btn-danger btn-sm" ng-click="funConfirmDeleteMessage(stateWiseProductRateObj.cir_id,cirStateID,'stateWiseProductRate');"><i class="fa fa-trash-o" aria-hidden="true"></i></a>
+						</div>
+					</div>
+				</div>
+		</div>
+		<div ng-if="!productStatesList.length" class="col-sm-12">
+			 No Record Found!
+		</div>
+	</div>
+</div>

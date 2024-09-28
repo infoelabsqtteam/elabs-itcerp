@@ -1,0 +1,10 @@
+SNO,customer_code,customer_name,customer_city,outstanding_amount,above_outstanding_amount
+1,CUST2,Naxpar Pharma Pvt. Ltd.,Panckulla,1000,3000
+2,CUST3,Maxcure Nutravedics Limited,Panckulla,1000,3000
+3,CUST4,Chatha Foods Pvt. Ltd.,Panckulla,1000,3000
+4,CUST5,Allied Blenders & Distillers Pvt. Ltd.,Panckulla,1000,3000
+5,CUST6,Alpha Milk Foods Pvt. Ltd.,Panckulla,1000,3000
+6,CUST7,B.v. Bio-corp Pvt. Ltd.,Panckulla,1000,3000
+7,CUST8,Chambal Fertilizers And Chemicals Limited,Panckulla,1000,3000
+8,CUST9,Alchemist Hospitals LTD.,Panckulla,1000,3000
+9,CUST10,Food Corporation Of India,Panckulla,1000,3000

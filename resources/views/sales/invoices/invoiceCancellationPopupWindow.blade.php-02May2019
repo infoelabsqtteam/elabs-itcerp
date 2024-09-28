@@ -1,0 +1,32 @@
+<!-- Modal -->
+<div class="modal fade" data-backdrop="static" data-keyboard="false" id="invoiceCancellationInputPopupWindow" tabindex="-1" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+	<div class="modal-dialog">	
+		<div class="modal-content">
+			<form method="POST" role="form" id="erpInvoiceCancellationPopupWindowForm" name="erpInvoiceCancellationPopupWindowForm" novalidate>
+			
+				<!--modal-header-->
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">&times;</button>
+					<h4 class="modal-title">Invoice No : <span ng-bind="invoiceCancellation.invoice_no"></span></h4>
+				</div>
+				<!--/modal-header-->
+				
+				<!--modal-body-->
+				<div class="modal-body">
+					<div class="radio text-left">
+						<label><input type="radio" ng-required="true" ng-model="cancelledWithRelatedOrders" name="cancelledWithRelatedOrders" value="1">Fully Cancelled</label>
+					</div>
+					<div class="radio text-left">
+						<label><input type="radio" ng-required="true" ng-model="cancelledWithRelatedOrders" name="cancelledWithRelatedOrders" value="2">Re-Generation</label>
+					</div>
+				</div>					
+				<div class="modal-footer">
+					<input type="hidden" ng-value="invoiceCancellation.invoice_id" name="invoice_id" ng-model="invoiceCancellation.invoice_id">
+					<button type="button" class="btn btn-primary" ng-disabled="erpInvoiceCancellationPopupWindowForm.$invalid" ng-click="funProcessInvoiceCancellation(invoiceCancellation.invoice_id);">Submit</button>
+					<button type="button" class="btn btn-default" class="close" data-dismiss="modal">Close</button>
+				</div>					
+			</form>
+		</div>
+	</div>
+</div>
+<!-- Modal -->

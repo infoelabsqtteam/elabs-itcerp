@@ -1,0 +1,24 @@
+# min hr date month dow cmd
+55 11 30 1,3,5,7,8,10,12 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+55 11 29 4,6,9,11 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+55 11 27,28 2 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+
+#min hr date month dow cmd
+55 * 31 1,3,5,7,8,10,12 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailSentCommand
+55 * 30 4,6,9,11 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailSentCommand
+55 * 28,29 2 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailSentCommand
+
+
+New Cron Job:
+-------------
+
+#min hr date month dow cmd-insertion of voc
+55 19 31 1,3,5,7,8,10,12 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+55 19 30 4,6,9,11 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+55 19 28,29 2 * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailDataCommand
+
+#min hr date month dow cmd-dending of voc
+55 2-10 1 * * /opt/lampp/htdocs/itcerp/artisan command:VOC.CmdAutoVocMailSentCommand
+
+#min hr date month dow cmd
+55 11-24/2 * * 1-6 /opt/lampp/htdocs/itcerp/artisan command:OrderConfirmation.CmdAutoOrderConfirmationMailSentCommand

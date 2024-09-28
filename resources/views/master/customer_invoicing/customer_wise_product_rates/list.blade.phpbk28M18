@@ -1,0 +1,131 @@
+<div ng-hide="listCustomerWiseProductRateDiv">
+	<div class="row header">
+		<div role="new" class="navbar-form navbar-left">            
+			<span ng-click="funGetCustomerWiseRefreshProductRates(cirCustomerID,1)" class="pull-left"><strong id="form_title">Customer Wise Product Rate Listing<span ng-if="[[customerWiseProductRateList.length]] > 0">([[customerWiseProductRateListCount]])</span></strong></span>
+		</div>            
+		<div role="new" class="navbar-form navbar-right" style="margin-top:-5px;">
+				<select class="form-control selectDept" name="cir_product_category_id"
+					ng-model="customerWiseProductRate.deptID.selectedOption"
+					id="cir_product_category_id"
+					ng-required='true'
+					ng-change = "funGetCustomerListAccToDept(customerWiseProductRate.deptID.selectedOption.id)"
+					ng-options="item.name for item in parentCategoryList track by item.id">
+				</select>
+			</div>
+		<div role="new" class="navbar-form navbar-right" style="margin-top:0px;margin-right: 43px !important;">
+            <input type="text" placeholder="Search" ng-model="filterCustomerWiseProductRateList" class="form-control ng-pristine ng-untouched ng-valid" style="margin-right: 4px;">
+		</div>
+			<div role="new"  class="adBtn">
+			    <a href="javascript:;" ng-if="{{defined('ADD') && ADD}}" ng-click="funGetCustomersList(0,'add');navigateFormPage(cirCustomerID,'0','add');" class="btn btn-primary">Add New</a>
+			</div>
+		</div>
+	<div class="row" id="no-more-tables">
+		<div class="panel panel-default">		           
+			<div class="panel-body">
+				<div class="col-sm-12">
+					<div class="col-sm-3 text-left custom-scroll">
+						<table class="col-sm-12 table-striped table-condensed cf custom-padding">
+							<thead>
+								<tr>
+									<th><label ng-click="funGetProductWiseCustomersList()">Customer Name([[productCustomersList.length]])</label></th>
+                                    <th class="text-center"><label> City </label></th>
+								</tr>
+								<tr>
+									<td colspan="2">
+										<input type="text"  placeholder="Search" ng-model="filterProductCustomersList" class="form-control ng-pristine ng-untouched ng-valid">	
+									</td>
+								</tr>
+							</thead>
+							<tbody>
+								<tr ng-repeat="customerObj in productCustomersList | filter : filterProductCustomersList" style="padding: 0;" title="[[customerObj.customer_name]]" class="gray-listing">
+									<td class="paddingTopRight">
+										<div class="col-sm-12 text-left" ng-if="cirCustomerID != customerObj.customer_id" ng-click="funGetCustomerWiseProductRates(customerObj.customer_id,deptID,'modify')">[[customerObj.customer_name]]
+										
+										</div>
+										<div class="col-sm-12 text-left active-gray-listing" ng-if="cirCustomerID == customerObj.customer_id" ng-click="funGetCustomerWiseProductRates(customerObj.customer_id,deptID,'modify')" >
+										[[customerObj.customer_name]]
+										
+										</div>
+									</td>
+									<td class="paddingTopRight"> <div class="col-sm-12 text-left" ng-if="cirCustomerID != customerObj.customer_id" ng-click="funGetCustomerWiseProductRates(customerObj.customer_id,deptID,'modify')">
+										[[customerObj.city_name]]
+										</div>
+										<div class="col-sm-12 text-left active-gray-listing" ng-if="cirCustomerID == customerObj.customer_id" ng-click="funGetCustomerWiseProductRates(customerObj.customer_id,deptID,'modify')" >
+										
+										[[customerObj.city_name]]
+										</div>
+										</td>
+                                    <td>
+										<span class="col-sm-2 editbtn" ng-if="customerObj.fixed_rate">
+                                            <a style="margin-left: 9px;" href="javascript:;" ng-if="{{defined('EDIT') && EDIT}}" title="Update Record" class="btn btn-info btn-sm" ng-click="navigateFormPage(customerObj.customer_id,customerObj.cir_id,'modify');funGetCustomersCity(customerObj.city_id,customerObj.city_name,'add')"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+                                        </span>
+                                        <span class="col-sm-2 editbtn" ng-if="!customerObj.fixed_rate">
+                                            <a style="margin-left: 9px;" href="javascript:;" ng-if="{{defined('EDIT') && EDIT}}" title="Update Record" class="btn btn-info btn-sm" ng-click="funEditCustomerWiseProductRate(customerObj.cir_id);"><i class="fa fa-pencil-square-o" aria-hidden="true"></i>[[customerObj.cir_customer_id]]</a>
+                                        </span>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="col-sm-9">
+						<table class="col-sm-12 table-striped table-condensed cf font15">
+						<thead>
+						<tr>
+							<th>
+								<label>Product Category</label>
+							</th>
+							<th>
+								<label>Product Name</label>
+							</th>	
+							<th>
+								<label>Product Alias Name</label>
+							</th>
+							<th>
+								<label>Rate</label>
+							</th>
+							<th>
+								<label>Action</label>
+							</th>
+						</tr>		
+						</thead>
+						<tbody>
+							<tr ng-repeat="customerWiseProductRateObj in customerWiseProductRateList | filter : filterCustomerWiseProductRateList" title="[[customerWiseProductRateObj.c_product_name]]">
+									<td><span ng-click="funEditCustomerWiseProductRate(customerWiseProductRateObj.cir_id);">
+											<span>[[customerWiseProductRateObj.dept_name ? customerWiseProductRateObj.dept_name : '-';]]</span>
+												
+										</span>
+									</td>
+									<td>
+									<span ng-click="funEditCustomerWiseProductRate(customerWiseProductRateObj.cir_id);">	
+											[[customerWiseProductRateObj.product_name]]
+										</span>
+									</td>	
+									<td>
+									<span ng-click="funEditCustomerWiseProductRate(customerWiseProductRateObj.cir_id);">	
+											[[customerWiseProductRateObj.c_product_name]]
+										</span>
+									</td>
+									<td>
+									<span  ng-click="funEditCustomerWiseProductRate(customerWiseProductRateObj.cir_id);">
+									[[customerWiseProductRateObj.invoicing_rate]]
+									</span>	
+									</td>
+										<td>
+										<span >
+											<a href="javascript:;" ng-if="{{defined('DELETE') && DELETE }}" title="Delete Record" class="btn btn-danger btn-sm" ng-click="funConfirmDeleteMessage(customerWiseProductRateObj.cir_id,cirCustomerID);"><i class="fa fa-trash-o" aria-hidden="true"></i></a>
+										</span>
+									</td>
+								</tr>	
+						</tbody>
+						</table>
+						<div ng-if="!productCustomersList.length" class="col-sm-12 text-center">No Record Found!</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+	<style>
+		.paddingTopRight{ padding:5px 0px!important;}
+	</style>

@@ -1,0 +1,148 @@
+<div class="row">
+	<div class="header">
+		<strong class="pull-left headerText" ng-click="funRefreshTestParameter(testParameterCategory,EquipmentTypeId,filterParameter.searchProducthdr)" title="Refresh">Test Parameters <span ng-if="allList.length">([[allList.length]])</span></strong>	
+		<div class="navbar-form navbar-right" role="search">
+				<div class="nav-custom">
+					<button type="button" title="Select Product Category" ng-click="showParameterCatTreeViewPopUp(11)" class="btn btn-default">Tree View</button>
+					<select class="seachBox form-control width195 hidden" 
+						name="seach_test_parameter_category"
+						id="seach_test_parameter_category" 
+						ng-model="filterParameter.testParameterCategory"
+						ng-change="funGetTestParameters(filterParameter.testParameterCategory.id,EquipmentTypeId)"
+						ng-options="item.name for item in categoryCodeList track by item.id">
+						<option value="">All Parameter Category</option>
+					</select>	
+					<select class="form-control width195" 
+						ng-model="equipment.selectedOption" 
+						ng-options="item.name for item in equipmentTypesList track by item.id" 
+						ng-change="funGetTestParameters(testParameterCategory,equipment.selectedOption.id)">
+						<option value="">All Equipment Type</option>
+					</select>			
+					<input type="text" class="seachBox form-control ng-pristine ng-untouched ng-valid" placeholder="Search"  ng-change="funFilterTestParameter(testParameterCategory,EquipmentTypeId,filterParameter.searchProducthdr)"	ng-model="filterParameter.searchProducthdr">		  	
+				</div>
+		</div>
+	</div>
+	<div id="no-more-tables">
+		<table class="col-sm-12 table-striped table-condensed cf">
+			<thead class="cf">
+				<tr>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('test_parameter_code')">Test Parameter Code  </label>
+						<span class="sortorder" ng-show="predicate === 'test_parameter_code'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('test_parameter_name')">Test Parameter Name  </label>
+						<span class="sortorder" ng-show="predicate === 'test_parameter_name'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('test_parameter_print_desc')">Test Parameter Print Description </label>
+						<span class="sortorder" ng-show="predicate === 'test_parameter_print_desc'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('test_parameter_category')">Test Parameter Category   </label>
+						<span class="sortorder" ng-show="predicate === 'test_parameter_category'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('cost_price')">Cost Price</label>
+						<span class="sortorder" ng-show="predicate === 'cost_price'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('selling_price')">Selling Price</label>
+						<span class="sortorder" ng-show="predicate === 'selling_price'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th>
+						<label class="sortlabel" ng-click="sortBy('equipment_name')">Equipment Type</label>
+						<span class="sortorder" ng-show="predicate === 'equipment_name'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th class="width10">
+						<label class="sortlabel" ng-click="sortBy('created_by')">Created By  </label>
+						<span class="sortorder" ng-show="predicate === 'created_by'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th class="width8">
+						<label class="sortlabel" ng-click="sortBy('created_at')">Created On  </label>
+						<span class="sortorder" ng-show="predicate === 'created_at'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th class="width8">
+						<label class="sortlabel" ng-click="sortBy('updated_at')">Updated On  </label>
+						<span class="sortorder" ng-show="predicate === 'updated_at'" ng-class="{reverse:reverse}"></span>						
+					</th>
+					<th class="width10">Action	
+						<button type="button" title="Filter" ng-hide="multisearchBtn" ng-click="openMultisearch()" class="pull-right btn btn-primary"><i class="fa fa-filter"></i></button>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-hide="multiSearchTr">
+					<td><input type="text" ng-change="getMultiSearch()" name="search_test_parameter_code"  ng-model="searchParameter.test_parameter_code" 	class="multiSearch form-control width100" placeholder="Parameter Code"></td>
+					<td><input type="text" ng-change="getMultiSearch()" name="search_test_parameter_name"  ng-model="searchParameter.test_parameter_name" 	class="multiSearch form-control width100" placeholder="Parameter Name"></td>
+					<td><input type="text" ng-change="getMultiSearch()" name="search_test_parameter_print_desc"  ng-model="searchParameter.test_parameter_print_desc" class="multiSearch form-control" placeholder="Test Parameter Print Description"></td>
+					<td class="width8"></td>
+					<td class="width8"></td>
+					<td class="width8"></td>
+					<td class="width8"></td>
+					<td class="width8"><input type="text" ng-change="getMultiSearch()" name="search_created_by" 	   ng-model="searchParameter.search_created_by" class="multiSearch form-control " placeholder="Created By"></td>
+					<td class="width8"><input type="text" ng-change="getMultiSearch()" name="search_created_at"  	   ng-model="searchParameter.search_created_at" class="multiSearch form-control visibility" placeholder="Created On"></td>
+					<td class="width8"><input type="text" ng-change="getMultiSearch()" name="search_updated_at" 	   ng-model="searchParameter.search_updated_at" class="multiSearch form-control visibility" placeholder="Updated On"></td>
+					<td class="width10">	
+						<button ng-click="refreshMultisearch()" title="Refresh" class="btn btn-primary btn-sm"><i class="fa fa-refresh" aria-hidden="true"></i></button>
+						<button ng-click="closeMultisearch()" title="Close" class="btn btn-default btn-sm"><i class="fa fa-times" aria-hidden="true"></i></button>
+					</td>
+				</tr>
+				<tr dir-paginate="obj in allList | filter : filterParameters | itemsPerPage: {{ defined('PERPAGE') ? PERPAGE : 15 }} | orderBy:predicate:reverse" >
+					<td data-title="Parameter Code">[[obj.testParametersList.test_parameter_code]]</td>
+					<td data-title="Parameter Name" class="uper-case" ng-bind-html="obj.testParametersList.test_parameter_name"></td>
+					<td data-title="Parameter Print Description" class="uper-case" ng-bind-html="obj.testParametersList.test_parameter_print_desc">
+						<span id="parameterlimitedText-[[obj.testParametersList.test_parameter_id]]">
+							[[ obj.testParametersList.test_parameter_print_desc | limitTo : {{ defined('TEXTLIMIT') ? TEXTLIMIT : 150 }} ]]
+							<a href="javascript:;" ng-click="toggleDescription('parameter',obj.testParametersList.test_parameter_id)" ng-show="obj.testParametersList.test_parameter_print_desc.length > 150" class="readMore">read more...</a>
+						</span>
+						<span id="parameterfullText-[[obj.testParametersList.test_parameter_id]]" style="display:none;" >
+							[[ obj.testParametersList.test_parameter_print_desc]] 
+							<a href="javascript:;" ng-click="toggleDescription('parameter',obj.testParametersList.test_parameter_id)" class="readMore">read less...</a>
+						</span>
+					</td>
+					<td data-title="Parameter Category ">[[obj.testParametersList.test_para_cat_name]]</td>
+					<td data-title="cost price">[[obj.testParametersList.cost_price]]</td>
+					<td data-title="selling price">[[obj.testParametersList.selling_price]]</td>
+					
+					<td data-title="Equipment Type">
+						<span ng-if="obj.equipmentList.length==1">[[obj.testParametersList.equipment_name]]</span>
+						<span ng-if="obj.equipmentList.length>1">
+							<a title="Equipments List" class="text-center cursor-pointer" data-toggle="modal" data-target="#myModalEquip_[[obj.testParametersList.test_parameter_id]]"><i class="fa fa-eye" aria-hidden="true"></i></a>
+							<div class="modal fade" id="myModalEquip_[[obj.testParametersList.test_parameter_id]]" role="dialog">
+								<div class="modal-dialog modal-sm">
+									<div class="modal-content">
+										<div class="modal-header text-left">
+											<button type="button" class="close" data-dismiss="modal">&times;</button>
+											<h4 class="modal-title"><span class="poptitle">Equipment Types</span></h4>
+										</div>
+										<div class="modal-body">											
+											<ul>
+												<li ng-repeat="equipment in obj.equipmentList">[[equipment.equipment_name]]</li>
+											</ul>									
+										</div>
+										<div class="modal-footer">
+											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</span>
+					</td>
+					<td data-title="Created By">[[obj.testParametersList.createdBy]]</td>
+					<td data-title="Created On">[[obj.testParametersList.created_at?obj.testParametersList.created_at:'-']]</td>
+					<td data-title="Updated On ">[[obj.testParametersList.updated_at?obj.testParametersList.updated_at:'-']]</td>
+					<td class="width10" ng-if="{{(defined('EDIT') && EDIT) || (defined('DELETE') && DELETE)}}">
+						<a ng-if="{{defined('EDIT') && EDIT}}" href="javascript:;" title="Update" class="btn btn-primary btn-sm" ng-click='editRecord(obj.testParametersList.test_parameter_id)'><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+						<a ng-if="{{defined('DELETE') && DELETE}}" href="javascript:;" title="Delete" class="btn btn-danger btn-sm" ng-click='funConfirmDeleteMessage(testParameterCategory,obj.testParametersList.test_parameter_id)'><i class="fa fa-trash-o" aria-hidden="true"></i></a>
+					</td>
+				</tr>
+				<tr ng-hide="allList.length"  class="noRecord"><td colspan="8">No Record Found!</td></tr>
+			</tbody>
+		</table>
+
+		<div class="box-footer clearfix">
+			<dir-pagination-controls></dir-pagination-controls>
+		</div>		  
+	</div>
+</div>

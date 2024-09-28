@@ -1,0 +1,6 @@
+test_parameter_category_name*,test_parameter_name*,test_parameter_print_desc,equipment_name*
+Particle size,parameter_1,parameter_desc_1,"AAS,ABELS,Balance"
+Particle size,parameter_2,parameter_desc_2,"ABELS,Chemically"
+Particle size,parameter_3,parameter_desc_3,Cmbinstrument
+Particle size,parameter_4,parameter_desc_4,"Cmbinstrument,Balance"
+Particle size,parameter_5,parameter_desc_5,"Cmbinstrument,Balance"

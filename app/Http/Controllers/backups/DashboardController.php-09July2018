@@ -1,0 +1,207 @@
+<?php
+
+namespace App\Http\Controllers;
+use Cookie;
+use Illuminate\Http\Request;
+use App\Http\Requests;
+use Auth;
+use App\Company;
+use App\ProductCategory;
+use App\User;
+use Session;
+use Validator;
+use DB;
+use Crypt;
+use App\Helpers\Helper;
+use Illuminate\Http\Response;
+use App\Order;
+use App\Models;
+use DNS1D;
+use PDF;
+use TCPDF;
+
+class DashboardController extends Controller
+{
+    /**
+    * protected Variable.
+    */
+    protected $auth;
+    
+    /**
+    * Create a new controller instance.
+    *
+    * @return void
+    */
+    public function __construct(){
+	
+	global $models,$order;
+
+	$models = new Models();
+	$order  = new Order();
+	$this->middleware('auth');
+	
+        $this->middleware(function($request,$next) {
+            $this->auth = Auth::user();
+	    parent::__construct($this->auth);
+            return $next($request);
+        });
+    }
+
+    /**
+    * Show the application dashboard.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function index(Request $request){
+	
+	$user_id            = defined('USERID') ? USERID : '0';
+	$division_id   	    = defined('DIVISIONID') ? DIVISIONID : '0';
+	$department_ids     = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : '0';
+	$role_ids           = defined('ROLE_IDS') ? ROLE_IDS : '0';
+	$equipment_type_ids = defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : '0';
+
+        return view('dashboard.index',['title' => 'Dashboard','_dashboard' => 'active','user_id' => $user_id,'division_id' => $division_id,'equipment_type_ids' => $equipment_type_ids]);
+    }
+    
+    /**
+    * Log the user out of the application.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function logout(Request $request){
+	
+	Auth::logout();
+	$request->session()->flush();
+	return redirect('/');
+    }
+    
+    /**
+    * Log the user out of the application.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function testing(Request $request){
+	
+	global $models,$order;
+	
+	//$orderData = DB::table('order_mail_dtl')->select('order_mail_dtl.mail_id',DB::raw('MAX(order_mail_dtl.mail_id) as max_mail_id'),'order_mail_dtl.order_id')->where('order_mail_dtl.mail_status','1')->where('order_mail_dtl.mail_content_type','3')->groupBy('order_mail_dtl.order_id')->orderBy('order_mail_dtl.mail_id','DESC')->get();
+	//if(!empty($orderData)){
+	//    foreach($orderData as $key => $values){
+	//	if(!empty($values->max_mail_id)){
+	//	    DB::table('order_mail_dtl')->where('order_mail_dtl.mail_id',$values->max_mail_id)->update(['order_mail_dtl.mail_active_type' => 1]);
+	//	}
+	//    }	    
+	//}
+	//die('Updated');
+	
+	//$schedulings = DB::table('schedulings')->select('schedulings.scheduling_id','schedulings.order_id','schedulings.scheduled_at',DB::raw('MAX(schedulings.scheduled_at) as scheduled_at_max'))->groupBy('schedulings.order_id')->orderBy('schedulings.scheduled_at','DESC')->get();
+	//if(!empty($schedulings)){
+	//    foreach($schedulings as $key => $values){
+	//	if(!empty($values->order_id) && !empty($values->scheduled_at_max)){
+	//	    DB::table('order_master')->where('order_master.order_id',$values->order_id)->update(['order_master.order_scheduled_date' => $values->scheduled_at_max]);
+	//	}	
+	//    }
+	//}
+	////echo '<pre>';print_r($schedulings);
+	//die('Updated');
+	
+	//$orderData = DB::table('order_master')->select('order_master.order_id','order_master.booking_date','order_master.order_no','order_master.sample_id')->groupBy('order_master.sample_id')->orderBy('order_master.sample_id','ASC')->get();
+	//if(!empty($orderData)){
+	//    foreach($orderData as $key => $values){
+	//	if(!empty($values->order_id) && !empty($values->booking_date)){
+	//	    DB::table('samples')->where('samples.sample_id',$values->sample_id)->where('samples.sample_status','1')->update(['samples.sample_booked_date' => $values->booking_date]);
+	//	}
+	//    }	    
+	//}
+	//die('Updated');
+	
+	die('Testing Blade');
+	
+	return view('test');	
+    }
+    
+    /**
+    * Log the user out of the application.
+    *
+    * @return \Illuminate\Http\Response
+    */
+    public function getDashboardContent(Request $request){
+	
+	global $models,$order;
+	
+	$error	  	    = '0';
+        $message  	    = config('messages.message.error');
+	$user_id            = defined('USERID') ? USERID : '0';
+	$division_id   	    = defined('DIVISIONID') ? array(DIVISIONID) : array();
+	$department_ids     = defined('DEPARTMENT_IDS') ? DEPARTMENT_IDS : array();
+	$allRoleIds	    = DB::table('roles')->pluck('id')->all();
+	$role_id            = defined('ROLEID') ? ROLEID : '0';
+	$role_ids           = defined('ROLE_IDS') ? ROLE_IDS : '0';
+	$equipment_type_ids = defined('EQUIPMENT_TYPE_IDS') ? EQUIPMENT_TYPE_IDS : array();
+	$roleData	    = $role_id == '1' ? $allRoleIds : $role_ids;
+	$returnData	    = array();
+	
+	echo '<pre>';print_r($division_id);
+	echo '<pre>';print_r($department_ids);
+	echo '<pre>';print_r($equipment_type_ids);
+	
+	if(!empty($roleData)){
+	    foreach($roleData as $key => $role){
+		$roleDetail = DB::table('roles')->where('roles.id',$role)->first();
+		if($role == '3'){		//Sample Receiver		    
+		    $coloumArrayData = array('0' => 'No of Samples Received','1' => 'No of Samples booked');		    
+		    $returnData[$key]['thead'] = $roleDetail->name;
+		    $departments = DB::table('product_categories')->select('product_categories.p_category_id','product_categories.p_category_name')->where('product_categories.parent_id','0')->get();
+		    $divisions   = DB::table('divisions')->whereIn('division_id',$division_id)->select('division_id','division_name')->get();
+		    foreach($coloumArrayData as $coloumKey => $coloumArray){
+			$totalData = array();
+			$returnData[$key]['tbody'][$coloumKey]['department'] = $coloumArray;
+			foreach($departments as $department){
+			    $departmentName = $department->p_category_name;
+			    if($coloumKey == '0'){
+				$countValue = DB::table('samples')->whereIn('samples.division_id',$division_id)->where('samples.product_category_id',$department->p_category_id)->where(DB::raw("DATE(samples.sample_current_date)"),'<=',CURRENTDATE)->count();
+			    }else{
+				$countValue = count(DB::table('samples')->join('order_master','order_master.sample_id','samples.sample_id')->whereIn('samples.division_id',$division_id)->where('samples.product_category_id',$department->p_category_id)->where(DB::raw("DATE(samples.sample_current_date)"),'<=',CURRENTDATE)->where(DB::raw("DATE(order_master.booking_date)"),'<=',CURRENTDATE)->where('samples.sample_status','1')->groupBy('order_master.sample_id')->get());
+			    }			    
+			    $returnData[$key]['tbody'][$coloumKey][$departmentName] = $countValue;
+			    $totalData[$key]['tbody'][$coloumKey][$departmentName]  = $countValue;
+			}
+			$returnData[$key]['tbody'][$coloumKey]['total'] = array_sum($totalData[$key]['tbody'][$coloumKey]);
+		    }
+		}
+		if($role == '4'){		//Order Booker
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '5'){		//Scheduler
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '6'){		//Tester
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '8'){		//Reviewer
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '9'){		//Finalizer
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '10'){		//Approval(QA)
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '11'){		//Invoicer
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '12'){		//Dispatcher
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+		if($role == '13'){		//CRM
+		    $returnData[$key]['heading'] = $roleDetail->name;
+		}
+	    }
+	}
+	
+	echo '<pre>';print_r($returnData);die;
+	
+	return response()->json(['error' => $error, 'message' => $message]);	
+    }
+
+}

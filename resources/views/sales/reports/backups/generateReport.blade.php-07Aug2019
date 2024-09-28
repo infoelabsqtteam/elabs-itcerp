@@ -1,0 +1,85 @@
+@if(!empty($viewData))
+    @if(array_key_exists('order', $viewData))  
+        @if(!empty($viewData['order']['product_category_id']))
+            @if($viewData['order']['product_category_id'] == '1')
+                @if(!empty($withOutPartWiseReport) && $withOutPartWiseReport == '12')
+                    @include('sales.reports.generateReports.generateReportFoodWithoutPartWise')
+                @else
+                    @include('sales.reports.generateReports.generateReportFood')
+                @endif
+            @elseif($viewData['order']['product_category_id'] == '2')
+               @include('sales.reports.generateReports.generateReportPharma')
+            @elseif($viewData['order']['product_category_id'] == '3')
+               @include('sales.reports.generateReports.generateReportWater')
+            @elseif($viewData['order']['product_category_id'] == '4')
+               @include('sales.reports.generateReports.generateReportHelmet')
+            @elseif($viewData['order']['product_category_id'] == '5')
+               @include('sales.reports.generateReports.generateReportAyurvedic')
+            @elseif($viewData['order']['product_category_id'] == '6')
+               @include('sales.reports.generateReports.generateReportBuilding')
+            @elseif($viewData['order']['product_category_id'] == '7')
+                @include('sales.reports.generateReports.generateReportTextile')
+            @elseif($viewData['order']['product_category_id'] == '8')
+                @if(!empty($withOutPartWiseReport) && $withOutPartWiseReport == '12')
+                    @include('sales.reports.generateReports.generateReportEnvironmentWithoutPartWise')
+                @elseif(!empty($viewData['generalParameters']))
+                    @include('sales.reports.generateReports.generateReportEnvironmentWater')
+                @else
+                    @include('sales.reports.generateReports.generateReportEnvironment')
+                @endif
+            @elseif($viewData['order']['product_category_id'] == '405')
+                @if(!empty($reportWithOutForm50Format) && $reportWithOutForm50Format == '14')
+                    @include('sales.reports.generateReports.generateReportCosmetic')
+                @else
+                    @include('sales.reports.generateReports.generateReportCosmeticWithForm50Format')
+                @endif
+            @else
+                @include('sales.reports.generateReports.generateReportDefault')
+            @endif
+        @endif
+    @else
+        <?php $totalRows = count($viewData);?>
+        @foreach($viewData as $key => $viewData)
+            @if(!empty($viewData['order']['product_category_id']))
+                @if($viewData['order']['product_category_id'] == '1')
+                    @if(!empty($withOutPartWiseReport) && $withOutPartWiseReport == '12')
+                        @include('sales.reports.generateReports.generateReportFoodWithoutPartWise')
+                    @else
+                        @include('sales.reports.generateReports.generateReportFood')
+                    @endif
+                @elseif($viewData['order']['product_category_id'] == '2')
+                   @include('sales.reports.generateReports.generateReportPharma')
+                @elseif($viewData['order']['product_category_id'] == '3')
+                   @include('sales.reports.generateReports.generateReportWater')
+                @elseif($viewData['order']['product_category_id'] == '4')
+                   @include('sales.reports.generateReports.generateReportHelmet')
+                @elseif($viewData['order']['product_category_id'] == '5')
+                   @include('sales.reports.generateReports.generateReportAyurvedic')
+                @elseif($viewData['order']['product_category_id'] == '6')
+                   @include('sales.reports.generateReports.generateReportBuilding')
+                @elseif($viewData['order']['product_category_id'] == '7')
+                   @include('sales.reports.generateReports.generateReportTextile')
+                @elseif($viewData['order']['product_category_id'] == '8')
+                    @if(!empty($withOutPartWiseReport) && $withOutPartWiseReport == '12')
+                        @include('sales.reports.generateReports.generateReportEnvironmentWithoutPartWise')
+                    @elseif(!empty($viewData['generalParameters']))
+                        @include('sales.reports.generateReports.generateReportEnvironmentWater')
+                    @else
+                        @include('sales.reports.generateReports.generateReportEnvironment')
+                    @endif
+                @elseif($viewData['order']['product_category_id'] == '405')
+                    @if(!empty($reportWithOutForm50Format) && $reportWithOutForm50Format == '14')
+                        @include('sales.reports.generateReports.generateReportCosmetic')
+                    @else
+                        @include('sales.reports.generateReports.generateReportCosmeticWithForm50Format')
+                    @endif
+                @else
+                    @include('sales.reports.generateReports.generateReportDefault')
+                @endif
+            @endif            
+            @if($key+1 < $totalRows)
+                <div style="page-break-after: always;"></div>
+            @endif            
+        @endforeach
+    @endif
+@endif

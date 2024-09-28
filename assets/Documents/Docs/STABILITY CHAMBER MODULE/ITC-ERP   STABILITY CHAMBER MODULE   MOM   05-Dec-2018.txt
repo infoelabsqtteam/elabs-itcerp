@@ -1,0 +1,48 @@
+
+Subject:
+ITC-ERP : STABILITY CHAMBER MODULE : MOM : 05-Dec-2018
+From:
+Praveen Singh <praveen.singh@drishinfo.com>
+Date:
+05-Dec-18 6:45 PM
+To:
+chaand@drishinfo.com
+CC:
+deepika.sharma@itclabs.com
+
+Dear Sir,
+
+Please find the below MOM Detail :
+
+For adding a Stability Order it required the following steps:
+
+    Customer Detail
+    Sample Detail
+    Prototype Detail
+
+1.Customer Detail : will be same as current module.
+
+2.Sample Detail : Will be same as current module.
+
+3.Prototype Detail : It include the following steps:
+
+    Date range : From and To Date-picker
+    Label Option for each date range.
+    Stability condition:
+        Long Term
+        Real Time
+        Accelerated
+    Test Parameter Detail : Its selection will be based on Stability condition.
+    Sample Qty : It will based on Stability option.Each Stability option has its own sample Qty.
+
+Notes:
+
+    Prototype can be editable as long as its order has not been created.
+    Number of Order will be based on number of Stability condition for each prototype.
+    Shooting a mail after adding a initial Parent Prototype Detail.
+    Booking of Children Order(Orders based on added Prototypes) based on user confirmation. i.e.After taking out the sample from the Chamber,user will confirm,then the next phase prototype order will be booked by the system automatically.
+
+@Deepika-Maam : If you find any correction in the above detail,please add it.
+
+Thanks & Regards,
+Praveen Singh
